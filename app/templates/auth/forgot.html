@@ -1,0 +1,20 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Reset your password{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('key-round') }}</span>
+<h1>Reset your password</h1>
+{% if sent %}
+<div class="flash flash-success" role="status">{{ icon('mail') }}<span>If an account uses that email, we've sent a link to reset the password. It works for one hour.</span></div>
+<p class="auth-switch"><a href="{{ url_for('auth.signin') }}">{{ icon('arrow-left') }} Back to sign in</a></p>
+{% else %}
+<p class="muted">Enter your email and we'll send you a link to choose a new password.</p>
+<form method="post" class="stack auth-form" novalidate>
+  {{ form.hidden_tag() }}
+  {{ field(form.email, autocomplete="username", placeholder="you@example.com", autofocus=True, inputmode="email") }}
+  <button class="btn btn-primary btn-block" type="submit">Send reset link</button>
+</form>
+<p class="auth-switch"><a href="{{ url_for('auth.signin') }}">Back to sign in</a></p>
+{% endif %}
+{% endblock %}

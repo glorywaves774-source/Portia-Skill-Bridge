@@ -1,0 +1,21 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('log-in') }}</span>
+<h1>Sign in</h1>
+<p class="muted">Welcome back. Sign in to your workspace.</p>
+{% if error %}<div class="flash flash-error" role="alert">{{ icon('circle-alert') }}<span>{{ error }}</span></div>{% endif %}
+<form method="post" action="{{ url_for('auth.signin') }}" class="stack auth-form" novalidate>
+  {{ form.hidden_tag() }}
+  {{ field(form.email, autocomplete="username", placeholder="you@example.com", autofocus=not error, inputmode="email") }}
+  {{ field(form.password, autocomplete="current-password") }}
+  <div class="auth-row">
+    {{ checkbox(form.remember) }}
+    <a href="{{ url_for('auth.forgot_password') }}" class="small">Forgot password?</a>
+  </div>
+  <button class="btn btn-primary btn-block" type="submit">Sign in {{ icon('arrow-right') }}</button>
+</form>
+<p class="auth-switch">New to {{ app_name }}? <a href="{{ url_for('auth.signup') }}">Start a free trial</a></p>
+{% endblock %}

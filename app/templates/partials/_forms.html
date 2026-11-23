@@ -1,0 +1,21 @@
+{% macro field(f, placeholder="", autocomplete="", hint="", cls="", autofocus=False, inputmode="") -%}
+{% set attrs = {} %}
+{% if placeholder %}{% set _ = attrs.update({"placeholder": placeholder}) %}{% endif %}
+{% if autocomplete %}{% set _ = attrs.update({"autocomplete": autocomplete}) %}{% endif %}
+{% if inputmode %}{% set _ = attrs.update({"inputmode": inputmode}) %}{% endif %}
+{% if autofocus %}{% set _ = attrs.update({"autofocus": True}) %}{% endif %}
+{% if f.errors %}{% set _ = attrs.update({"aria-invalid": "true", "aria-describedby": f.id ~ "-error"}) %}{% endif %}
+<div class="field {{ cls }}{% if f.errors %} has-error{% endif %}">
+  <label class="field-label" for="{{ f.id }}">{{ f.label.text }}</label>
+  {{ f(**attrs) }}
+  {% if hint %}<span class="field-hint">{{ hint }}</span>{% endif %}
+  {% if f.errors %}<span class="field-error" id="{{ f.id }}-error">{{ f.errors|join(' ') }}</span>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro checkbox(f) -%}
+<div class="check{% if f.errors %} has-error{% endif %}">
+  <label>{{ f() }}<span>{{ f.label.text }}</span></label>
+  {% if f.errors %}<span class="field-error">{{ f.errors|join(' ') }}</span>{% endif %}
+</div>
+{%- endmacro %}

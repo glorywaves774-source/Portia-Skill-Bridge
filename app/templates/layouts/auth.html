@@ -1,0 +1,31 @@
+{% extends "layouts/base.html" %}
+{% from "partials/_macros.html" import icon, theme_toggle, flashes %}
+{% block body_class %}auth{% endblock %}
+{% block body %}
+<div class="backdrop" aria-hidden="true"></div>
+<div class="auth-wrap">
+  <header class="auth-top">
+    <a class="brand" href="{{ url_for('public.index') }}" aria-label="{{ app_name }} home">{% include "partials/_brand.html" %}</a>
+    {{ theme_toggle() }}
+  </header>
+  <div class="auth-grid{% block grid_class %}{% endblock %}">
+    <aside class="auth-aside" aria-hidden="true">
+      <div class="auth-aside-inner">
+        <p class="eyebrow">{{ icon('sparkles') }} {{ app_tagline }}</p>
+        <h2>One place for training, skills and jobs.</h2>
+        <ul>
+          <li>{{ icon('graduation-cap') }} Courses, attendance and progress</li>
+          <li>{{ icon('clipboard-check') }} Assessments and certificates</li>
+          <li>{{ icon('briefcase') }} Vacancies and job placements</li>
+          <li>{{ icon('shield-check') }} Your own private workspace</li>
+        </ul>
+      </div>
+    </aside>
+    <main id="main" class="auth-card">
+      {{ flashes() }}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <p class="auth-foot muted small">© {{ now.year }} {{ app_developer }}</p>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Choose a new password{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('lock') }}</span>
+{% if invalid %}
+<h1>This link has expired</h1>
+<p class="muted">Reset links work once and for one hour. Ask for a new one.</p>
+<a class="btn btn-primary btn-block" href="{{ url_for('auth.forgot_password') }}">Send a new link</a>
+{% else %}
+<h1>Choose a new password</h1>
+<p class="muted">You'll be signed out of all other devices.</p>
+<form method="post" class="stack auth-form" novalidate>
+  {{ form.hidden_tag() }}
+  {{ field(form.password, autocomplete="new-password", hint="At least 10 characters, with numbers or symbols.", autofocus=True) }}
+  {{ field(form.confirm, autocomplete="new-password") }}
+  <button class="btn btn-primary btn-block" type="submit">Save new password</button>
+</form>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Choose a workspace{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('building-2') }}</span>
+<h1>Choose a workspace</h1>
+<p class="muted">You belong to more than one. You can switch at any time from the menu.</p>
+<ul class="workspace-list">
+  {% for tenant, memberships in options %}
+  <li>
+    <form method="post" action="{{ url_for('auth.select_workspace', public_id=tenant.public_id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <button type="submit" class="workspace-option{% if tenant.public_id == current %} is-current{% endif %}">
+        <span class="workspace-avatar" aria-hidden="true">{{ tenant.name[:1]|upper }}</span>
+        <span class="workspace-meta">
+          <strong translate="no">{{ tenant.name }}</strong>
+          <span>{{ memberships|map(attribute='role_label')|join(', ') }}{% if tenant.status != 'active' %} · Suspended{% endif %}</span>
+        </span>
+        {{ icon('chevron-right') }}
+      </button>
+    </form>
+  </li>
+  {% else %}
+  <li class="muted">You don't belong to any workspace yet.</li>
+  {% endfor %}
+</ul>
+{% if current_user.is_platform_admin %}<a class="btn btn-ghost btn-block" href="{{ url_for('admin.overview') }}">{{ icon('shield-check') }} Super Admin console</a>{% endif %}
+<form method="post" action="{{ url_for('auth.signout') }}" class="auth-switch">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit" class="link-button">Sign out</button>
+</form>
+{% endblock %}

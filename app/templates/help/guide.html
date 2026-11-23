@@ -1,0 +1,24 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Help guide{% endblock %}
+{% block page_title %}Help guide{% endblock %}
+{% block page_subtitle %}How to do things in PORTIA SkillBridge{% endblock %}
+{% block content %}
+<section class="panel">
+  <label class="field"><span class="visually-hidden">Filter topics</span>
+    <input type="search" placeholder="Filter topics" data-nav-filter="#help-topics" autocomplete="off"></label>
+  <div id="help-topics" class="help-topics">
+    {% for t in topics %}
+    {% set slug = t.title|lower|replace("'", "")|replace("?", "")|replace(" ", "-") %}
+    <details class="help-topic" data-nav-item id="topic-{{ slug }}" {% if request.args.get('open') == slug %}open{% endif %}>
+      <summary>{{ t.title }}</summary>
+      <div class="help-topic-body">
+        {% for b in t.blocks() %}{% if b.type == 'p' %}<p>{{ b.text }}</p>{% else %}<ul>{% for i in b['items'] %}<li>{{ i }}</li>{% endfor %}</ul>{% endif %}{% endfor %}
+        {% if links[t.title] %}<p class="help-links">{% for l in links[t.title] %}<a class="link-arrow" href="{{ l.url }}">{{ l.label }} {{ icon('chevron-right') }}</a>{% endfor %}</p>{% endif %}
+      </div>
+    </details>
+    {% endfor %}
+    <p class="nav-empty muted" data-nav-empty hidden>No topics match.</p>
+  </div>
+</section>
+{% endblock %}

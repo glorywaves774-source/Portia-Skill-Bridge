@@ -1,0 +1,43 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Placements{% endblock %}
+{% block page_title %}Placements{% endblock %}
+{% block page_subtitle %}Learners in work and how they're doing{% endblock %}
+{% block page_tools %}<a class="btn btn-ghost btn-sm" href="{{ url_for('jobs.index') }}">{{ icon('briefcase') }} Jobs</a>{% if can('placements.manage') and can('learners.view') %}<a class="btn btn-primary btn-sm" href="{{ url_for('placements.new') }}">{{ icon('handshake') }} Record a placement</a>{% endif %}{% endblock %}
+{% block content %}
+<section class="kpi-grid">
+  <article class="panel kpi tone-teal"><span class="kpi-icon">{{ icon('handshake') }}</span><p class="kpi-label">In work now</p><p class="kpi-value">{{ stats.in_work }}</p><p class="kpi-note">{{ stats.placed_this_year }} started this year</p></article>
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('trending-up') }}</span><p class="kpi-label">Still in work at 6 months</p><p class="kpi-value">{{ (stats.retention_6m ~ '%') if stats.retention_6m is not none else '—' }}</p><p class="kpi-note">From 6-month checks</p></article>
+  <article class="panel kpi {{ 'tone-amber' if stats.follow_ups_due else 'tone-blue' }}"><span class="kpi-icon">{{ icon('calendar-check') }}</span><p class="kpi-label">Checks overdue</p><p class="kpi-value">{{ stats.follow_ups_due }}</p><p class="kpi-note">{{ due|length }} due in the next 2 weeks or overdue</p></article>
+</section>
+{% if due %}
+<section class="panel">
+  <header class="panel-head"><h2>Follow-up checks due</h2></header>
+  <ul class="doc-list">{% for fu in due %}{% set p = fu.placement %}<li>
+    <span class="doc-icon {{ 'is-overdue' if fu.is_overdue(today) else '' }}" aria-hidden="true">{{ icon('calendar-check') }}</span>
+    <div class="doc-meta"><a href="{{ url_for('placements.detail', public_id=p.public_id) }}#follow-ups" translate="no"><strong>{{ p.learner.full_name }}</strong></a>
+      <span class="muted small">{{ fu.months }}-month check · {{ p.job_title }} at <span translate="no">{{ p.employer_name }}</span></span></div>
+    <span class="nowrap small {{ 'overdue' if fu.is_overdue(today) else 'muted' }}">{{ 'Overdue since' if fu.is_overdue(today) else 'Due' }} {{ fu.due_on|date('%d %b') }}</span>
+  </li>{% endfor %}</ul>
+</section>
+{% endif %}
+<section class="panel">
+  <form class="toolbar" method="get">
+    <div class="field"><label class="visually-hidden" for="show">Show</label><select id="show" name="show"><option value="active">In work</option><option value="ended" {% if show == 'ended' %}selected{% endif %}>Ended</option><option value="all" {% if show == 'all' %}selected{% endif %}>All</option></select></div>
+    <div class="field"><label class="visually-hidden" for="type">Type</label><select id="type" name="type"><option value="">Any type of work</option>{% for k, label in types.items() %}<option value="{{ k }}" {% if etype == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Filter</button>
+  </form>
+  {% if placements %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Person</th><th>Job</th><th>Employer</th><th>Started</th><th class="num">Pay</th><th>Status</th></tr></thead>
+    <tbody>{% for p in placements %}<tr>
+      <td class="wrap"><a href="{{ url_for('placements.detail', public_id=p.public_id) }}" translate="no"><strong>{{ p.learner.full_name }}</strong></a></td>
+      <td class="wrap">{{ p.job_title }}<br><span class="muted small">{{ p.type_label }}</span></td>
+      <td class="wrap" translate="no">{{ p.employer_name }}</td>
+      <td class="nowrap">{{ p.start_date|date }}</td>
+      <td class="nowrap num">{{ p.monthly_pay_minor|money }}</td>
+      <td class="nowrap"><span class="badge {{ 'badge-active' if p.is_active else '' }}">{{ p.status_label }}</span></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No placements {{ 'match' if show != 'active' or etype else 'yet' }}.</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Courses{% endblock %}
+{% block page_title %}Online courses{% endblock %}
+{% block page_subtitle %}{{ courses|length }} shown{% if usage.limit %} · {{ usage.used }} of {{ usage.limit }} on your plan{% endif %}{% endblock %}
+{% block page_tools %}{% if can('courses.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('courses.new') }}">{{ icon('graduation-cap') }} New course</a>{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  <form class="toolbar" method="get">
+    <div class="field"><label class="visually-hidden" for="status">Status</label><select id="status" name="status"><option value="">Not archived</option>{% for k, v in statuses.items() %}<option value="{{ k }}" {% if status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}<option value="all" {% if status == 'all' %}selected{% endif %}>All</option></select></div>
+    <button class="btn btn-ghost" type="submit">Filter</button>
+  </form>
+  {% if courses %}
+  <div class="course-grid">{% for c in courses %}{% set n = c.enrolments|length %}
+    <a class="course-card" href="{{ url_for('courses.detail', public_id=c.public_id) }}">
+      <span class="course-card-top"><span class="badge badge-course-{{ c.status }}">{{ c.status_label }}</span><span class="muted small">{{ c.level_label }}</span></span>
+      <strong>{{ c.title }}</strong>
+      {% if c.programme %}<span class="muted small mono">{{ c.programme.code }}</span>{% endif %}
+      <span class="course-card-meta">{{ icon('layers') }} {{ c.lessons|length }} lessons <span aria-hidden="true">·</span> {{ icon('users') }} {{ n }} learner{{ '' if n == 1 else 's' }}{% if n %} <span aria-hidden="true">·</span> {{ (c.enrolments|sum(attribute='progress') / n)|round|int }}% average progress{% endif %}</span>
+    </a>{% endfor %}</div>
+  {% else %}
+  <div class="empty-state center"><p class="muted">No courses yet.</p>{% if can('courses.manage') %}<a class="btn btn-primary" href="{{ url_for('courses.new') }}">{{ icon('graduation-cap') }} Create the first course</a>{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

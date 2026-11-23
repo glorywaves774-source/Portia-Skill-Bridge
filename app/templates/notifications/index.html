@@ -1,0 +1,25 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+{% block page_subtitle %}{{ unread }} unread{% endblock %}
+{% block page_tools %}{% if unread %}<form method="post" action="{{ url_for('notifications.read_all') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm" type="submit">{{ icon('check') }} Mark all as read</button></form>{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  {% if items %}
+  <ul class="notice-list">{% for n in items %}
+    <li class="{{ 'is-unread' if n.is_unread }}">
+      <a href="{{ url_for('notifications.open_', public_id=n.public_id) }}">
+        <span class="notice-dot" aria-hidden="true"></span>
+        <span class="notice-text"><strong>{{ n.title }}</strong>{% if n.body %}<span class="muted">{{ n.body }}</span>{% endif %}
+          <span class="muted small">{{ n.category_label }} · {{ n.created_at|date('%d %b %Y %H:%M') }}{% if n.is_unread %}<span class="visually-hidden"> · unread</span>{% endif %}</span></span>
+        {{ icon('chevron-right') }}
+      </a>
+    </li>{% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Nothing here yet. You'll hear about applications, marks, certificates, payments and more.</p>
+  {% endif %}
+  <p class="muted small">Choose which of these also come by email under <a href="{{ url_for('account.profile') }}#notifications">My account</a>.</p>
+</section>
+{% endblock %}

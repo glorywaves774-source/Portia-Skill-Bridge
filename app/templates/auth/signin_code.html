@@ -1,0 +1,17 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Sign-in code{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('shield-check') }}</span>
+<h1>Enter your code</h1>
+<p class="muted">Open your authenticator app and enter the 6-digit code for {{ app_name }}.</p>
+{% if error %}<div class="flash flash-error" role="alert">{{ icon('circle-alert') }}<span>{{ error }}</span></div>{% endif %}
+<form method="post" action="{{ url_for('auth.signin_code') }}" class="stack auth-form" novalidate>
+  {{ form.hidden_tag() }}
+  <div class="field"><label class="field-label" for="code">Code</label>
+    <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="20" required autofocus placeholder="123456" class="code-input"></div>
+  <button class="btn btn-primary btn-block" type="submit">Continue {{ icon('arrow-right') }}</button>
+</form>
+<p class="muted small">Lost your phone? Enter one of your recovery codes instead (like <span class="mono">ABCD-EFGH</span>). If you have none left, ask your workspace administrator or PORTIA support to switch two-step sign-in off for you.</p>
+<p class="auth-switch"><a href="{{ url_for('auth.signin') }}">Use a different account</a></p>
+{% endblock %}

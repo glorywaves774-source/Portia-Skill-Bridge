@@ -1,0 +1,129 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ c.title }}{% endblock %}
+{% block page_title %}{{ c.title }}{% endblock %}
+{% block page_subtitle %}{{ c.status_label }} · {{ c.lessons|length }} lessons · {{ c.enrolments|length }} learners{% endblock %}
+{% macro post_btn(url, ic, label, cls="btn-icon btn-icon-sm") -%}
+<form method="post" action="{{ url }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="{{ cls }}" type="submit" aria-label="{{ label }}" title="{{ label }}">{{ icon(ic) }}</button></form>
+{%- endmacro %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('courses.index') }}">{{ icon('arrow-left') }} All courses</a></p>
+{% if manage and c.status == 'draft' %}
+<div class="notice {{ 'notice-warn' if problems else 'notice-info' }}">{{ icon('info') }}<div>
+  {% if problems %}<strong>Draft.</strong> <span class="muted">Before publishing: {{ problems|join(' ') }}</span>
+  {% else %}<strong>Ready to publish.</strong> <span class="muted">Learners see the course once it's published.</span>
+  <form method="post" action="{{ url_for('courses.status', public_id=c.public_id) }}" class="inline-form publish-inline">{{ status_form.hidden_tag() }}<input type="hidden" name="st-status" value="published"><input type="hidden" name="back" value="content"><button class="btn btn-primary btn-sm" type="submit">Publish now</button></form>{% endif %}
+</div></div>
+{% endif %}
+<nav class="tabs" aria-label="Course">
+  {% for t in tabs %}{% if t != 'settings' or manage %}{% if t != 'submissions' or manage %}<a href="{{ url_for('courses.detail', public_id=c.public_id, tab=t) }}" class="{% if tab == t %}is-active{% endif %}" {% if tab == t %}aria-current="page"{% endif %}>{{ {'content': 'Content', 'learners': 'Learners', 'submissions': 'Marking', 'settings': 'Settings'}[t] }}</a>{% endif %}{% endif %}{% endfor %}
+</nav>
+
+{% if tab == 'content' %}
+{% for m in c.modules %}
+<section class="panel module">
+  <header class="panel-head">
+    {% if manage %}
+    <form method="post" action="{{ url_for('courses.rename_module', public_id=c.public_id, module_id=m.id) }}" class="module-title-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label class="visually-hidden" for="mt-{{ m.id }}">Module title</label>
+      <input id="mt-{{ m.id }}" type="text" name="title" value="{{ m.title }}" maxlength="160" class="module-title-input">
+      <button class="btn btn-ghost btn-sm" type="submit">Rename</button>
+    </form>
+    <div class="row-actions">
+      {% if not loop.first %}{{ post_btn(url_for('courses.move_module', public_id=c.public_id, module_id=m.id, direction='up'), 'chevron-up', 'Move module up') }}{% endif %}
+      {% if not loop.last %}{{ post_btn(url_for('courses.move_module', public_id=c.public_id, module_id=m.id, direction='down'), 'chevron-down', 'Move module down') }}{% endif %}
+      {% if c.modules|length > 1 %}{{ post_btn(url_for('courses.delete_module', public_id=c.public_id, module_id=m.id), 'x', 'Delete module') }}{% endif %}
+    </div>
+    {% else %}<h2>{{ m.title }}</h2>{% endif %}
+  </header>
+  {% if m.lessons %}
+  <ol class="lesson-list">{% for l in m.lessons %}
+    <li>
+      <span class="lesson-icon kind-{{ l.kind }}" aria-hidden="true">{{ icon(l.icon) }}</span>
+      <div class="doc-meta"><a href="{{ url_for('courses.lesson', public_id=c.public_id, lesson_id=l.public_id) }}">{{ l.title }}</a>
+        <span class="muted small">{{ l.kind_label }}{% if l.is_assessed %} · {{ l.questions|length }} question{{ '' if l.questions|length == 1 else 's' }} · pass {{ l.pass_mark }}%{% if l.time_limit_minutes %} · {{ l.time_limit_minutes }} min{% endif %}{% elif l.duration_minutes %} · {{ l.duration_minutes }} min{% endif %}{% if l.kind == 'files' %} · {{ l.files|length }} file{{ '' if l.files|length == 1 else 's' }}{% endif %}</span></div>
+      {% if manage %}<div class="row-actions">
+        {% if not loop.first %}{{ post_btn(url_for('courses.move_lesson', public_id=c.public_id, lesson_id=l.public_id, direction='up'), 'chevron-up', 'Move up') }}{% endif %}
+        {% if not loop.last %}{{ post_btn(url_for('courses.move_lesson', public_id=c.public_id, lesson_id=l.public_id, direction='down'), 'chevron-down', 'Move down') }}{% endif %}
+        {{ post_btn(url_for('courses.delete_lesson', public_id=c.public_id, lesson_id=l.public_id), 'x', 'Delete lesson') }}
+      </div>{% endif %}
+    </li>{% endfor %}</ol>
+  {% else %}<p class="empty muted">No lessons in this module yet.</p>{% endif %}
+  {% if manage %}
+  <form method="post" action="{{ url_for('courses.add_lesson', public_id=c.public_id, module_id=m.id) }}" class="toolbar add-lesson" novalidate>
+    {{ lesson_form.hidden_tag() }}
+    <div class="field grow"><label class="visually-hidden" for="l-title-{{ m.id }}">New lesson title</label>{{ lesson_form.title(id="l-title-" ~ m.id, placeholder="New lesson title") }}</div>
+    <div class="field"><label class="visually-hidden" for="l-kind-{{ m.id }}">Type</label>{{ lesson_form.kind(id="l-kind-" ~ m.id) }}</div>
+    <button class="btn btn-ghost" type="submit">{{ icon('layers') }} Add lesson</button>
+  </form>
+  {% endif %}
+</section>
+{% endfor %}
+{% if manage %}
+<section class="panel">
+  <form method="post" action="{{ url_for('courses.add_module', public_id=c.public_id) }}" class="toolbar" novalidate>
+    {{ module_form.hidden_tag() }}
+    <div class="field grow"><label class="visually-hidden" for="m-title">New module title</label>{{ module_form.title(placeholder="New module title, e.g. Module 2: Sewing techniques") }}</div>
+    <button class="btn btn-ghost" type="submit">{{ icon('layers') }} Add module</button>
+  </form>
+</section>
+{% endif %}
+
+{% elif tab == 'learners' %}
+<section class="panel">
+  <header class="panel-head"><h2>Learners</h2>{% if manage and can('learners.view') %}<a class="btn btn-primary btn-sm" href="{{ url_for('courses.enrol', public_id=c.public_id) }}">{{ icon('user-plus') }} Enrol learners</a>{% endif %}</header>
+  {% if c.enrolments %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Learner</th><th>Progress</th><th>Last activity</th><th>Completed</th>{% if manage %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for ce in c.enrolments|sort(attribute='learner.last_name') %}<tr>
+      <td class="wrap"><span translate="no">{{ ce.learner.full_name }}</span><br><span class="muted small mono">{{ ce.learner.learner_no }}</span></td>
+      <td class="progress-cell"><progress max="100" value="{{ ce.progress }}"></progress><span class="small">{{ ce.progress }}%</span></td>
+      <td class="nowrap">{{ ce.last_activity_at|date('%d %b %Y') }}</td>
+      <td class="nowrap">{{ ce.completed_at|date }}</td>
+      {% if manage %}<td>{{ post_btn(url_for('courses.remove_enrolment', public_id=c.public_id, enrolment_id=ce.id), 'x', 'Remove from course') }}</td>{% endif %}
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">Nobody enrolled yet.{% if c.programme %} Learners in {{ c.programme.code }} are enrolled automatically when the course is published.{% endif %}</p>{% endif %}
+</section>
+
+{% elif tab == 'submissions' %}
+<section class="panel">
+  <header class="panel-head"><h2>Assignments to mark</h2></header>
+  {% if submissions %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Learner</th><th>Assignment</th><th>Submitted</th><th>Mark</th><th></th></tr></thead>
+    <tbody>{% for s in submissions %}<tr>
+      <td class="wrap" translate="no">{{ s.learner.full_name }}</td>
+      <td class="wrap">{{ s.lesson.title }}</td>
+      <td class="nowrap">{{ s.submitted_at|date('%d %b %Y %H:%M') }}{% if s.lesson.due_date and s.submitted_at.date() > s.lesson.due_date %} <span class="badge badge-past_due">Late</span>{% endif %}</td>
+      <td class="nowrap">{% if s.is_graded %}<strong>{{ s.score }}</strong>/{{ s.lesson.max_score }}{% else %}<span class="badge badge-trialing">To mark</span>{% endif %}</td>
+      <td><a class="btn btn-ghost btn-sm" href="{{ url_for('courses.submission', public_id=c.public_id, submission_id=s.public_id) }}">{{ 'Review' if s.is_graded else 'Mark' }}</a></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No assignments submitted yet.</p>{% endif %}
+</section>
+
+{% else %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Course details</h2></header>
+    <form method="post" action="{{ url_for('courses.settings', public_id=c.public_id) }}" class="stack" novalidate>
+      {{ course_form.hidden_tag() }}
+      {{ field(course_form.title) }}
+      <div class="form-grid">{{ field(course_form.category) }}{{ field(course_form.level) }}{{ field(course_form.estimated_hours, inputmode="numeric") }}{{ field(course_form.programme) }}</div>
+      {{ field(course_form.summary) }}
+      <button class="btn btn-primary" type="submit">{{ icon('check') }} Save</button>
+    </form>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Status</h2><span class="badge badge-course-{{ c.status }}">{{ c.status_label }}</span></header>
+    <form method="post" action="{{ url_for('courses.status', public_id=c.public_id) }}" class="toolbar">
+      {{ status_form.hidden_tag() }}
+      <div class="field grow"><label class="visually-hidden" for="st-status">Status</label>{{ status_form.status() }}</div>
+      <button class="btn btn-primary" type="submit">Update</button>
+    </form>
+    <p class="muted small">Draft: only staff can see it. Published: enrolled learners can take it. Archived: hidden from learners and doesn't count towards your plan; progress is kept.</p>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

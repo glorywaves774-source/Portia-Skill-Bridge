@@ -1,0 +1,40 @@
+{% extends "layouts/public.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Verify a certificate{% endblock %}
+{% block content %}
+<section class="section narrow verify">
+  <header class="section-head center">
+    <p class="eyebrow">{{ icon('shield-check') }} Certificate verification</p>
+    <h1>Check a PORTIA SkillBridge certificate</h1>
+    <p class="muted">Enter the verification code printed at the bottom of the certificate.</p>
+  </header>
+  <form class="panel verify-form" method="get" action="{{ url_for('verify.form') }}" role="search">
+    <label class="visually-hidden" for="code">Verification code</label>
+    <input id="code" type="text" name="code" placeholder="e.g. AB3CD-7EFGH" value="{{ code or '' }}" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="20">
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Verify</button>
+  </form>
+  {% if searched %}
+    {% if cert %}
+    {% set state = cert.status_label %}
+    <article class="panel verify-result is-{{ state|lower }}">
+      <p class="verify-status">{{ icon('circle-check' if state == 'Valid' else 'circle-alert') }} {% if state == 'Valid' %}Valid certificate{% elif state == 'Revoked' %}This certificate has been revoked{% else %}This certificate has expired{% endif %}</p>
+      <dl class="details">
+        <div><dt>Awarded to</dt><dd translate="no"><strong>{{ learner_name }}</strong></dd></div>
+        <div><dt>Certificate</dt><dd>{{ cert.title }}<br><span class="muted small">{{ cert.kind_label }}</span></dd></div>
+        <div><dt>Issued by</dt><dd translate="no">{{ tenant.name }}{% if tenant.city %}, {{ tenant.city }}{% endif %}</dd></div>
+        <div><dt>Issued on</dt><dd class="nowrap">{{ cert.issued_on|date('%d %B %Y') }}</dd></div>
+        {% if cert.expires_on %}<div><dt>Valid until</dt><dd class="nowrap">{{ cert.expires_on|date('%d %B %Y') }}</dd></div>{% endif %}
+        {% if cert.is_revoked %}<div><dt>Revoked on</dt><dd class="nowrap">{{ cert.revoked_at|date('%d %B %Y') }}</dd></div>{% endif %}
+        <div><dt>Number</dt><dd class="mono">{{ cert.number }}</dd></div>
+      </dl>
+      {% if competencies and state == 'Valid' %}<h2 class="sub-head">Competencies achieved</h2><ul class="criteria">{% for c in competencies %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
+    </article>
+    {% else %}
+    <article class="panel verify-result is-unknown">
+      <p class="verify-status">{{ icon('circle-alert') }} No certificate found with that code</p>
+      <p class="muted">Check the code and try again. Codes look like AB3CD-7EFGH. If it still isn't found, the certificate may not be genuine; contact the organization that issued it.</p>
+    </article>
+    {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

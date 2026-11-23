@@ -1,0 +1,23 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Workspace settings{% endblock %}
+{% block page_title %}Workspace settings{% endblock %}
+{% block page_subtitle %}<span class="mono">{{ ws.code }}</span>{% endblock %}
+{% block content %}
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.name, cls="span-2", autocomplete="organization") }}
+    {% if form.organization_type %}{{ field(form.organization_type) }}{% endif %}
+    {{ field(form.registration_number) }}
+    {{ field(form.email, autocomplete="email", inputmode="email") }}
+    {{ field(form.phone, autocomplete="tel", inputmode="tel") }}
+    {{ field(form.website, placeholder="https://", inputmode="url", cls="span-2") }}
+    {{ field(form.address, cls="span-2", autocomplete="street-address") }}
+    {{ field(form.city, autocomplete="address-level2") }}
+    {{ field(form.region, autocomplete="address-level1") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Save changes</button></div>
+  </form>
+</section>
+{% endblock %}

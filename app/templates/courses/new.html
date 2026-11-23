@@ -1,0 +1,19 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}New course{% endblock %}
+{% block page_title %}New online course{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('courses.index') }}">{{ icon('arrow-left') }} All courses</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.title, cls="span-2", placeholder="e.g. Introduction to Garment Construction") }}
+    {{ field(form.category, placeholder="e.g. Fashion") }}{{ field(form.level) }}
+    {{ field(form.estimated_hours, inputmode="numeric") }}{{ field(form.programme) }}
+    {{ field(form.summary, cls="span-2") }}
+    <p class="span-2 muted small">If you link a programme, everyone enrolled in it gets this course automatically once it's published.</p>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Create course</button></div>
+  </form>
+</section>
+{% endblock %}

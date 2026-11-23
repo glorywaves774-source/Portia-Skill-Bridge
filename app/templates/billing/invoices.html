@@ -1,0 +1,13 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Invoices{% endblock %}
+{% block page_title %}Invoices and receipts{% endblock %}
+{% block page_subtitle %}Every payment for this workspace{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('workspace.subscription') }}">{{ icon('arrow-left') }} Subscription</a></p>
+<section class="panel">
+  {% if invoices %}{% include "billing/_invoice_table.html" %}
+  <p class="muted small">Open an invoice to download it, or its receipt once paid, as a PDF.</p>
+  {% else %}<p class="muted">No payments yet.</p>{% endif %}
+</section>
+{% endblock %}

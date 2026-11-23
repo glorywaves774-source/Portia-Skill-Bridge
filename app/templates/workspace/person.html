@@ -1,0 +1,61 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ person.full_name }}{% endblock %}
+{% block page_title %}<span translate="no">{{ person.full_name }}</span>{% endblock %}
+{% block page_subtitle %}<span translate="no">{{ person.email }}</span>{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('workspace.people') }}">{{ icon('arrow-left') }} All people</a></p>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Details</h2>{% if active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge">Inactive</span>{% endif %}</header>
+    <dl class="details">
+      <div><dt>Name</dt><dd translate="no">{{ person.full_name }}</dd></div>
+      <div><dt>Email</dt><dd translate="no">{{ person.email }}</dd></div>
+      <div><dt>Phone</dt><dd translate="no" class="nowrap">{{ person.phone or '—' }}</dd></div>
+      <div><dt>Roles</dt><dd>{{ memberships|map(attribute='role_label')|join(', ') }}</dd></div>
+      {% for m in memberships if m.role == 'employer' %}<div><dt>Works for</dt><dd>{% if m.employer %}<a href="{{ url_for('employers.detail', public_id=m.employer.public_id) }}" translate="no">{{ m.employer.name }}</a>{% else %}<span class="muted">Not linked to an employer yet. Link them from the employer's page.</span>{% endif %}</dd></div>{% endfor %}
+      <div><dt>Owner</dt><dd>{{ 'Yes' if owner else 'No' }}</dd></div>
+      <div><dt>Joined</dt><dd class="nowrap">{{ (memberships|map(attribute='created_at')|min)|date }}</dd></div>
+      <div><dt>Last sign-in</dt><dd class="nowrap">{{ person.last_login_at|date('%d %b %Y %H:%M') }}</dd></div>
+      {% if not person.is_active_account %}<div><dt>Account</dt><dd>Deactivated by the platform team</dd></div>{% endif %}
+    </dl>
+  </section>
+  {% if form %}
+  <section class="panel">
+    <header class="panel-head"><h2>Roles</h2></header>
+    <form method="post" action="{{ url_for('workspace.person_roles', public_id=person.public_id) }}" class="stack">
+      {{ form.hidden_tag() }}
+      {{ form.roles(class_="check-grid") }}
+      <button class="btn btn-primary" type="submit">{{ icon('check') }} Save roles</button>
+    </form>
+    {% if not is_self and not owner %}
+    <div class="danger-zone">
+      {% if active %}
+      <form method="post" action="{{ url_for('workspace.person_status', public_id=person.public_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="deactivate">
+        <button class="btn btn-ghost" type="submit">{{ icon('pause') }} Deactivate</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('workspace.person_status', public_id=person.public_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="reactivate">
+        <button class="btn btn-ghost" type="submit">{{ icon('play') }} Reactivate</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('workspace.person_status', public_id=person.public_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="remove">
+        <button class="btn btn-danger" type="submit">{{ icon('x') }} Remove from workspace</button>
+      </form>
+      <p class="muted small">Deactivated people keep their records but can't open the workspace. Removing takes away all their roles here; their own account stays.</p>
+    </div>
+    {% elif owner %}<p class="muted small">The workspace owner can't be deactivated or removed.</p>
+    {% else %}<p class="muted small">You can't deactivate or remove yourself.</p>{% endif %}
+  </section>
+  {% endif %}
+</div>
+<section class="panel">
+  <header class="panel-head"><h2>Activity</h2></header>
+  {% if events %}
+  <ul class="activity">{% for e in events %}<li><span class="activity-dot"></span><div><p><strong translate="no">{{ e.summary or e.action }}</strong></p><p class="muted small"><span translate="no">{{ e.actor_label }}</span> · <span class="nowrap">{{ e.created_at|date('%d %b %Y %H:%M') }}</span></p></div></li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">Nothing recorded yet.</p>{% endif %}
+</section>
+{% endblock %}

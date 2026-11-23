@@ -1,0 +1,32 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Register: {{ s.title }}{% endblock %}
+{% block page_title %}Attendance register{% endblock %}
+{% block page_subtitle %}{{ s.title }} · {{ s.date|date('%a %d %b %Y') }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('programmes.detail', public_id=p.public_id, tab='sessions') }}">{{ icon('arrow-left') }} {{ p.name }}</a></p>
+<section class="panel">
+  {% if learners %}
+  <form method="post" class="register">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="register-tools">
+      <button type="button" class="btn btn-ghost btn-sm" data-mark-all="present">{{ icon('check') }} Mark everyone present</button>
+      <span class="muted small">{{ learners|length }} learner{{ '' if learners|length == 1 else 's' }}</span>
+    </div>
+    <ul class="register-list">{% for l in learners %}{% set a = current.get(l.id) %}
+      <li>
+        <div class="register-person">
+          {% if l.photo_file_id and can('learners.view') %}<img class="avatar-img" src="{{ url_for('learners.photo', public_id=l.public_id) }}" alt="" width="36" height="48" loading="lazy">{% else %}<span class="avatar-initials" aria-hidden="true">{{ l.initials }}</span>{% endif %}
+          <span class="pick-meta"><strong translate="no">{{ l.full_name }}</strong><span class="muted small mono">{{ l.learner_no }}</span></span>
+        </div>
+        <fieldset class="att-choices"><legend class="visually-hidden">Attendance for {{ l.full_name }}</legend>
+          {% for k, v in statuses.items() %}<label class="att att-{{ k }}"><input type="radio" name="a-{{ l.public_id }}" value="{{ k }}" {% if a and a.status == k %}checked{% endif %}><span>{{ v }}</span></label>{% endfor %}
+        </fieldset>
+        <label class="visually-hidden" for="n-{{ l.public_id }}">Note</label>
+        <input class="att-note" id="n-{{ l.public_id }}" type="text" name="n-{{ l.public_id }}" maxlength="160" placeholder="Note (optional)" value="{{ a.note if a and a.note else '' }}">
+      </li>{% endfor %}</ul>
+    <div class="form-actions sticky-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Save register</button></div>
+  </form>
+  {% else %}<p class="empty muted">Nobody is enrolled yet, so there's no register to take.</p>{% endif %}
+</section>
+{% endblock %}

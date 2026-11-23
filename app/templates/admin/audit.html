@@ -1,0 +1,26 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Audit log{% endblock %}
+{% block page_title %}Audit log{% endblock %}
+{% block page_subtitle %}The latest 200 recorded actions{% endblock %}
+{% block content %}
+<section class="panel">
+  {% if events %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>When</th><th>Action</th><th>Workspace</th><th>Details</th><th>By</th><th>IP</th></tr></thead>
+      <tbody>{% for e in events %}
+        <tr>
+          <td class="nowrap">{{ e.created_at|date('%d %b %Y %H:%M') }}</td>
+          <td class="nowrap mono">{{ e.action }}</td>
+          <td class="nowrap">{% if e.tenant %}<a href="{{ url_for('admin.tenant_detail', code=e.tenant.code) }}" translate="no">{{ e.tenant.name }}</a>{% else %}Platform{% endif %}</td>
+          <td class="wrap" translate="no">{{ e.summary or '' }}</td>
+          <td class="nowrap" translate="no">{{ e.actor_label or 'system' }}</td>
+          <td class="nowrap mono">{{ e.ip_address or '—' }}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty muted">Nothing recorded yet.</p>{% endif %}
+</section>
+{% endblock %}

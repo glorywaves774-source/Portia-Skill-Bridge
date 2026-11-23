@@ -1,0 +1,31 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}People{% endblock %}
+{% block page_title %}People{% endblock %}
+{% block page_subtitle %}Every account on the platform{% endblock %}
+{% block content %}
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name or email"></div>
+    <div class="field"><label class="visually-hidden" for="filter">Show</label>
+      <select id="filter" name="filter"><option value="">Everyone</option><option value="admins" {% if filter == 'admins' %}selected{% endif %}>Super Administrators</option><option value="locked" {% if filter == 'locked' %}selected{% endif %}>Locked out</option></select></div>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Search</button>
+  </form>
+  {% if users %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Email</th><th class="num">Workspaces</th><th>Last sign-in</th><th>Status</th></tr></thead>
+      <tbody>{% for u in users %}
+        <tr>
+          <td class="wrap"><a href="{{ url_for('admin.user_detail', public_id=u.public_id) }}" translate="no">{{ u.full_name }}</a>{% if u.is_platform_admin %} <span class="badge badge-trialing">Super Admin</span>{% endif %}</td>
+          <td class="nowrap" translate="no">{{ u.email }}</td>
+          <td class="nowrap num">{{ counts.get(u.id, 0) }}</td>
+          <td class="nowrap">{{ u.last_login_at|date('%d %b %Y %H:%M') }}</td>
+          <td class="nowrap">{% if not u.is_active_account %}<span class="badge badge-suspended">Deactivated</span>{% elif u.is_locked() %}<span class="badge badge-past_due">Locked</span>{% else %}<span class="badge badge-active">Active</span>{% endif %}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty muted">Nobody matches.</p>{% endif %}
+</section>
+{% endblock %}

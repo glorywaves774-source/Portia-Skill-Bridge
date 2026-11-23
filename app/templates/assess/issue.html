@@ -1,0 +1,23 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Issue a certificate{% endblock %}
+{% block page_title %}Issue a certificate{% endblock %}
+{% block page_subtitle %}<span translate="no">{{ learner.full_name }}</span> · <span class="mono">{{ learner.learner_no }}</span>{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('learners.profile', public_id=learner.public_id, tab='competencies') }}">{{ icon('arrow-left') }} Learner record</a></p>
+<section class="panel">
+  {% if options %}
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.basis, cls="span-2") }}
+    {{ field(form.issued_on) }}{{ field(form.expires_on) }}
+    {{ field(form.signatory_name) }}{{ field(form.signatory_title, placeholder="e.g. Centre Director") }}
+    <p class="span-2 muted small">Each certificate gets a unique number and a verification code. Anyone can check it at the public verification page or by scanning the QR code on the PDF.</p>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('award') }} Issue certificate</button></div>
+  </form>
+  {% else %}
+  <p class="muted">There's nothing to certify yet. A certificate can be issued when the learner completes an online course, is marked as having completed a programme, or is assessed competent against a framework. Anything that already has a valid certificate isn't listed.</p>
+  {% endif %}
+</section>
+{% endblock %}

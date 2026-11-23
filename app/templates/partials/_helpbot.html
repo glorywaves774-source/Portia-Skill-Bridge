@@ -1,0 +1,22 @@
+{% from "partials/_macros.html" import icon %}
+<button type="button" class="help-fab" data-help-open aria-controls="help-panel" aria-expanded="false" aria-label="Open PORTIA Assistant">{{ icon('message-circle') }}</button>
+<section class="help-panel" id="help-panel" role="dialog" aria-modal="false" aria-labelledby="help-title" data-help-panel hidden
+         data-ask-url="{{ url_for('help.ask') }}" data-guide-url="{{ url_for('help.guide') }}">
+  <header class="help-head">
+    <span class="help-avatar" aria-hidden="true">{{ icon('sparkles') }}</span>
+    <h2 id="help-title">PORTIA Assistant</h2>
+    <button type="button" class="btn-icon help-close" data-help-close aria-label="Close assistant">{{ icon('x') }}</button>
+  </header>
+  <div class="help-log" data-help-log aria-live="polite">
+    <div class="help-msg bot"><p>Hello <span translate="no">{{ current_user.first_name }}</span>! Ask me how to do something in PORTIA SkillBridge.</p></div>
+  </div>
+  <div class="help-suggest" data-help-suggest role="list" aria-label="Suggested questions">
+    {% for q in help_suggestions() %}<button type="button" class="help-chip" role="listitem" data-help-q>{{ q }}</button>{% endfor %}
+  </div>
+  <p class="help-privacy" data-help-privacy>Answers come from the help guide. Don't type personal details; they are removed before anything is saved.</p>
+  <form class="help-form" data-help-form>
+    <label class="visually-hidden" for="help-input">Your question</label>
+    <input id="help-input" type="text" maxlength="300" autocomplete="off" placeholder="Ask a question…" data-help-input enterkeyhint="send">
+    <button type="submit" class="help-send" aria-label="Send">{{ icon('send') }}</button>
+  </form>
+</section>

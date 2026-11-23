@@ -1,0 +1,17 @@
+{% extends "layouts/public.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Practice payment{% endblock %}
+{% block content %}
+<section class="dev-checkout"><div class="panel">
+  <p class="eyebrow">{{ icon('info') }} Practice payment · no real money</p>
+  <h1>Pay {{ t.amount|money(t.currency) }}</h1>
+  <p class="muted">This page stands in for Paystack while online payment is in practice mode. Invoice <span class="mono">{{ t.metadata.invoice }}</span>.</p>
+  <form method="post" class="stack">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary btn-block" name="outcome" value="card" type="submit">{{ icon('credit-card') }} Pay with test card (Visa •••• 4081)</button>
+    <button class="btn btn-ghost btn-block" name="outcome" value="momo" type="submit">{{ icon('phone') }} Pay with test Mobile Money</button>
+    <button class="btn btn-ghost btn-block" name="outcome" value="decline" type="submit">Decline the payment</button>
+    <button class="link-button" name="outcome" value="cancel" type="submit">Cancel and go back</button>
+  </form>
+</div></section>
+{% endblock %}

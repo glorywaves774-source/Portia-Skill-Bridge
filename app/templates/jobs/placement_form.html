@@ -1,0 +1,22 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Record a placement{% endblock %}
+{% block page_title %}Record a placement{% endblock %}
+{% block page_subtitle %}For jobs learners found themselves, apprenticeships and their own businesses{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('placements.index') }}">{{ icon('arrow-left') }} Placements</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.learner, cls="span-2") }}
+    {{ field(form.employment_type) }}{{ field(form.start_date) }}
+    {{ field(form.employer) }}{{ field(form.employer_name, placeholder="e.g. Abena's Tailoring (own business)") }}
+    {{ field(form.job_title, cls="span-2", placeholder="e.g. Tailor, Owner") }}
+    {{ field(form.monthly_pay, inputmode="decimal", hint="For their own business, their usual monthly earnings.") }}<div></div>
+    {{ field(form.notes, cls="span-2") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Record placement</button></div>
+  </form>
+  <p class="muted small">Hires from a vacancy are recorded from the applicant's page instead.</p>
+</section>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block page_title %}{{ lesson.title }}{% endblock %}
+{% block page_subtitle %}{{ lesson.kind_label }} · {{ lesson.questions|length }} question{{ '' if lesson.questions|length == 1 else 's' }} · pass mark {{ lesson.pass_mark }}%{% endblock %}
+{% block content %}
+{% if a.deadline_at %}
+<div class="timer" data-deadline="{{ a.deadline_at.isoformat() }}" data-form="quiz-form" role="timer" aria-live="off">{{ icon('timer') }} <span data-timer-text>Time left: {{ lesson.time_limit_minutes }}:00</span></div>
+{% endif %}
+<form method="post" id="quiz-form" class="quiz">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for q in lesson.questions %}
+  <fieldset class="panel question">
+    <legend><span class="q-num">{{ loop.index }}</span> {{ q.prompt }}</legend>
+    <p class="muted small">{{ 'Choose every correct answer.' if q.multiple else 'Choose one answer.' }} · {{ q.points }} point{{ '' if q.points == 1 else 's' }}</p>
+    <div class="choices">{% for o in q.options %}
+      <label class="choice"><input type="{{ 'checkbox' if q.multiple else 'radio' }}" name="q{{ q.id }}" value="{{ o.id }}"><span>{{ o.text }}</span></label>{% endfor %}</div>
+  </fieldset>
+  {% endfor %}
+  <div class="form-actions sticky-actions"><button class="btn btn-primary btn-lg" type="submit">{{ icon('send') }} Submit answers</button></div>
+</form>
+{% endblock %}

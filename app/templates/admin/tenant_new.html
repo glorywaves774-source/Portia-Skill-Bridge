@@ -1,0 +1,29 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}New workspace{% endblock %}
+{% block page_title %}New workspace{% endblock %}
+{% block page_subtitle %}Create a workspace and invite its owner{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('admin.tenants') }}">{{ icon('arrow-left') }} All workspaces</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="span-2 radio-row" role="radiogroup" aria-label="Account type">
+      {% for sub in form.kind %}<label class="pill-radio">{{ sub() }}<span>{{ sub.label.text }}</span></label>{% endfor %}
+    </div>
+    {{ field(form.name, cls="span-2") }}
+    {{ field(form.organization_type, hint="Organizations only") }}
+    {{ field(form.city) }}
+    {{ field(form.plan, hint="Organization plans for organizations, individual plans for individuals") }}
+    {{ field(form.billing_cycle) }}
+    <div class="span-2">{{ checkbox(form.start_trial) }}</div>
+    <h2 class="span-2 form-subhead">Owner</h2>
+    {{ field(form.owner_name) }}
+    {{ field(form.owner_email, inputmode="email") }}
+    {{ field(form.message, cls="span-2") }}
+    <p class="span-2 muted small">The owner gets an email invitation to set a password and open the workspace. Organizations' owners become Organization Administrators.</p>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('building-2') }} Create workspace</button></div>
+  </form>
+</section>
+{% endblock %}

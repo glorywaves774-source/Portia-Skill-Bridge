@@ -1,0 +1,23 @@
+{% extends "layouts/shell.html" %}
+{% block title %}Activity{% endblock %}
+{% block page_title %}Activity{% endblock %}
+{% block page_subtitle %}The latest 200 actions in this workspace{% endblock %}
+{% block content %}
+<section class="panel">
+  {% if events %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>When</th><th>What happened</th><th>By</th><th>Action</th></tr></thead>
+      <tbody>{% for e in events %}
+        <tr>
+          <td class="nowrap">{{ e.created_at|date('%d %b %Y %H:%M') }}</td>
+          <td class="wrap" translate="no">{{ e.summary or '' }}</td>
+          <td class="nowrap" translate="no">{{ e.actor_label or 'system' }}</td>
+          <td class="nowrap mono">{{ e.action }}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty muted">Nothing recorded yet.</p>{% endif %}
+</section>
+{% endblock %}

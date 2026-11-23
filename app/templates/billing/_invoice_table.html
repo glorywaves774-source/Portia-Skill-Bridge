@@ -1,0 +1,10 @@
+<div class="table-wrap"><table class="table">
+  <thead><tr><th>Invoice</th><th>For</th><th>Date</th><th class="num">Amount</th><th>Status</th></tr></thead>
+  <tbody>{% for inv in invoices %}<tr>
+    <td class="nowrap"><a class="mono" href="{{ url_for('billing.invoice', public_id=inv.public_id) }}">{{ inv.number }}</a></td>
+    <td class="wrap">{{ inv.description }}{% if inv.automatic %} <span class="muted small">· automatic</span>{% endif %}</td>
+    <td class="nowrap">{{ (inv.paid_at or inv.created_at)|date }}</td>
+    <td class="num nowrap">{{ inv.amount_minor|money(inv.currency) }}</td>
+    <td class="nowrap"><span class="badge badge-inv-{{ inv.status }}">{{ inv.status_label }}</span></td>
+  </tr>{% endfor %}</tbody>
+</table></div>

@@ -1,0 +1,37 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Join {{ tenant_name }}{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('user-plus') }}</span>
+<h1>Join <span translate="no">{{ tenant_name }}</span></h1>
+<p class="muted">{% if inviter %}<span translate="no">{{ inviter }}</span> has invited you{% else %}You've been invited{% endif %} to join as <strong>{{ roles|join(', ') }}</strong>.</p>
+{% if inv.message %}<blockquote class="invite-message" translate="no">{{ inv.message }}</blockquote>{% endif %}
+
+{% if mode == 'accept' %}
+<form method="post" class="stack auth-form">
+  {{ form.hidden_tag() }}
+  <button class="btn btn-primary btn-block" type="submit">{{ icon('check') }} Accept and open workspace</button>
+</form>
+{% elif mode == 'wrong_account' %}
+<div class="flash flash-error" role="alert">{{ icon('circle-alert') }}<span>This invitation is for <span translate="no">{{ masked }}</span>, but you're signed in as <span translate="no">{{ current_user.email }}</span>.</span></div>
+<form method="post" action="{{ url_for('auth.signout') }}" class="stack">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-primary btn-block" type="submit">Sign out to switch accounts</button>
+</form>
+{% elif mode == 'sign_in' %}
+<p class="muted">You already have an account with <span translate="no">{{ masked }}</span>. Sign in to accept.</p>
+<a class="btn btn-primary btn-block" href="{{ url_for('auth.signin', next=request.path) }}">{{ icon('log-in') }} Sign in to accept</a>
+{% else %}
+<p class="muted">Create your account for <span translate="no">{{ masked }}</span>. It takes a minute.</p>
+<form method="post" class="stack auth-form" novalidate>
+  {{ form.hidden_tag() }}
+  {{ field(form.full_name, autocomplete="name") }}
+  {{ field(form.password, autocomplete="new-password", hint="At least 10 characters, with numbers or symbols.") }}
+  {{ field(form.confirm, autocomplete="new-password") }}
+  {{ checkbox(form.accept_terms) }}
+  <button class="btn btn-primary btn-block" type="submit">Create account and join {{ icon('arrow-right') }}</button>
+</form>
+{% endif %}
+<p class="muted small auth-switch">This invitation expires on {{ inv.expires_at|date }}.</p>
+{% endblock %}

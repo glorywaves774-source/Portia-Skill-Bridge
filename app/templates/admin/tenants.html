@@ -1,0 +1,50 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon, sub_badge, tenant_badge %}
+{% block title %}Workspaces{% endblock %}
+{% block page_title %}Workspaces{% endblock %}
+{% block page_subtitle %}Every organization and individual account{% endblock %}
+{% block page_tools %}<a class="btn btn-primary btn-sm" href="{{ url_for('admin.tenant_new') }}">{{ icon('building-2') }} New workspace</a>{% endblock %}
+{% block content %}
+<section class="panel">
+  <form class="toolbar" method="get" action="{{ url_for('admin.tenants') }}" role="search">
+    <label class="field grow">
+      <span class="visually-hidden">Search</span>
+      <input type="search" name="q" value="{{ q }}" placeholder="Search by name, code or email">
+    </label>
+    <label class="field">
+      <span class="visually-hidden">Type</span>
+      <select name="kind">
+        <option value="">All types</option>
+        <option value="organization" {% if kind == 'organization' %}selected{% endif %}>Organizations</option>
+        <option value="individual" {% if kind == 'individual' %}selected{% endif %}>Individuals</option>
+      </select>
+    </label>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Search</button>
+  </form>
+
+  {% if tenants %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Workspace</th><th>Code</th><th>Type</th><th>Location</th><th>Plan</th><th>Subscription</th><th>Ends</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for t in tenants %}{% set sub = t.current_subscription %}
+        <tr>
+          <td class="wrap"><a href="{{ url_for('admin.tenant_detail', code=t.code) }}" translate="no">{{ t.name }}</a></td>
+          <td class="nowrap mono">{{ t.code }}</td>
+          <td class="nowrap">{{ t.organization_type_label }}</td>
+          <td class="nowrap" translate="no">{{ t.city or '—' }}{% if t.country %}, {{ t.country }}{% endif %}</td>
+          <td class="nowrap">{{ sub.plan.name if sub else '—' }}</td>
+          <td class="nowrap">{{ sub_badge(sub) }}</td>
+          <td class="nowrap">{{ sub.current_period_end|date if sub else '—' }}</td>
+          <td class="nowrap">{{ tenant_badge(t) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted small table-foot">{{ tenants|length }} workspace{{ '' if tenants|length == 1 else 's' }}</p>
+  {% else %}
+  <p class="empty muted">{% if q or kind %}No workspaces match your search.{% else %}No workspaces yet. Create one with <code>flask create-tenant --name "…" --plan org-starter</code>.{% endif %}</p>
+  {% endif %}
+</section>
+{% endblock %}

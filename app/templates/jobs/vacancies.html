@@ -1,0 +1,41 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% from "jobs/_macros.html" import job_badge %}
+{% block title %}Jobs{% endblock %}
+{% block page_title %}Jobs{% endblock %}
+{% block page_subtitle %}{% if job_scope.restricted %}<span translate="no">{{ job_scope.employer.name }}</span>{% else %}Vacancies from your employer partners{% endif %}{% endblock %}
+{% block page_tools %}{% if not job_scope.restricted %}<a class="btn btn-ghost btn-sm" href="{{ url_for('employers.index') }}">{{ icon('building-2') }} Employers</a>{% endif %}<a class="btn btn-ghost btn-sm" href="{{ url_for('placements.index') }}">{{ icon('handshake') }} Placements</a>{% if can('vacancies.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('jobs.new') }}">{{ icon('briefcase') }} New vacancy</a>{% endif %}{% endblock %}
+{% block content %}
+<section class="kpi-grid">
+  <article class="panel kpi tone-teal"><span class="kpi-icon">{{ icon('briefcase') }}</span><p class="kpi-label">Open vacancies</p><p class="kpi-value">{{ stats.open_vacancies }}</p><p class="kpi-note">{{ stats.open_positions }} position{{ '' if stats.open_positions == 1 else 's' }} to fill</p></article>
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('handshake') }}</span><p class="kpi-label">In work</p><p class="kpi-value">{{ stats.in_work }}</p><p class="kpi-note">{{ stats.placed_this_year }} placed this year</p></article>
+  {% if stats.placement_rate is defined %}
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('trending-up') }}</span><p class="kpi-label">Graduates placed</p><p class="kpi-value">{{ (stats.placement_rate ~ '%') if stats.placement_rate is not none else '—' }}</p><p class="kpi-note">{{ stats.completers_placed }} of {{ stats.completers }} who completed a programme</p></article>
+  {% else %}
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('trending-up') }}</span><p class="kpi-label">Still in work at 6 months</p><p class="kpi-value">{{ (stats.retention_6m ~ '%') if stats.retention_6m is not none else '—' }}</p><p class="kpi-note">From 6-month checks</p></article>
+  {% endif %}
+</section>
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Job title, code, trade{{ '' if job_scope.restricted else ' or employer' }}"></div>
+    <div class="field"><label class="visually-hidden" for="status">Status</label><select id="status" name="status"><option value="">Draft and open</option>{% for k, v in statuses.items() %}<option value="{{ k }}" {% if status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}<option value="all" {% if status == 'all' %}selected{% endif %}>All</option></select></div>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Filter</button>
+  </form>
+  {% if vacancies %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Job</th>{% if not job_scope.restricted %}<th>Employer</th>{% endif %}<th>Code</th><th class="num">Filled</th><th class="num">Applicants</th><th>Closes</th><th>Status</th></tr></thead>
+    <tbody>{% for v in vacancies %}{% set apps = v.applications if not job_scope.restricted else v.applications|selectattr('shared_with_employer')|list %}<tr>
+      <td class="wrap"><a href="{{ url_for('jobs.detail', public_id=v.public_id) }}"><strong>{{ v.title }}</strong></a><br><span class="muted small">{{ v.type_label }}{% if v.region %} · {{ v.region }}{% endif %}</span></td>
+      {% if not job_scope.restricted %}<td class="wrap" translate="no">{{ v.employer.name }}</td>{% endif %}
+      <td class="nowrap mono">{{ v.code }}</td>
+      <td class="nowrap num">{{ v.hired_count }} / {{ v.positions }}</td>
+      <td class="nowrap num">{{ apps|length }}</td>
+      <td class="nowrap">{{ v.closing_date|date }}</td>
+      <td class="nowrap">{{ job_badge(v) }}</td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}
+  <div class="empty-state center"><p class="muted">{% if q or status %}No vacancies match.{% else %}No vacancies yet.{% endif %}</p>
+    {% if not q and can('vacancies.manage') %}<a class="btn btn-primary" href="{{ url_for('jobs.new') }}">{{ icon('briefcase') }} Post the first vacancy</a>{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

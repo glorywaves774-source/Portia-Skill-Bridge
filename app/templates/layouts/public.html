@@ -1,0 +1,32 @@
+{% extends "layouts/base.html" %}
+{% from "partials/_macros.html" import icon, theme_toggle %}
+{% block body_class %}public{% endblock %}
+{% block body %}
+<div class="backdrop" aria-hidden="true"></div>
+<header class="site-header">
+  <div class="site-header-inner glass">
+    <a class="brand" href="{{ url_for('public.index') }}" aria-label="{{ app_name }} home">{% include "partials/_brand.html" %}</a>
+    <nav class="site-nav" aria-label="Main">
+      <a href="{{ url_for('public.index') }}#modules" class="site-nav-link">Platform</a>
+      <a href="{{ url_for('public.pricing') }}" class="site-nav-link{% if request.endpoint == 'public.pricing' %} is-active{% endif %}">Pricing</a>
+      {{ theme_toggle() }}
+      {% if current_user.is_authenticated %}
+      <a href="{{ url_for('workspace.dashboard') if not current_user.is_platform_admin else url_for('admin.overview') }}" class="btn btn-primary btn-sm">Open app</a>
+      {% else %}
+      <a href="{{ url_for('auth.signin') }}" class="site-nav-link">Sign in</a>
+      <a href="{{ url_for('auth.signup') }}" class="btn btn-primary btn-sm">Free trial</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main id="main" class="site-main">
+  {% block content %}{% endblock %}
+</main>
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <div class="brand brand-small">{% include "partials/_brand.html" %}</div>
+    <p class="muted">{{ app_tagline }}</p>
+    <p class="muted small">© {{ now.year }} {{ app_developer }} · v{{ app_version }}</p>
+  </div>
+</footer>
+{% endblock %}

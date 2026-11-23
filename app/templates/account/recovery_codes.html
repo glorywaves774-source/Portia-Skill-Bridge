@@ -1,0 +1,12 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Recovery codes{% endblock %}
+{% block page_title %}{{ 'Two-step sign-in is on' if first_time else 'New recovery codes' }}{% endblock %}
+{% block page_subtitle %}Save these codes now{% endblock %}
+{% block content %}
+<section class="panel narrow-panel">
+  <div class="notice notice-warn">{{ icon('circle-alert') }}<span><strong>This is the only time you'll see these.</strong> Write them down or save them in a password manager. Each works once, if you don't have your phone.{% if not first_time %} Your old codes no longer work.{% endif %}</span></div>
+  <ul class="code-grid" translate="no">{% for c in codes %}<li>{{ c }}</li>{% endfor %}</ul>
+  <a class="btn btn-primary" href="{{ url_for('account.profile') }}#two-step">{{ icon('check') }} I've saved them</a>
+</section>
+{% endblock %}

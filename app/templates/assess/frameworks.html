@@ -1,0 +1,23 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Competency frameworks{% endblock %}
+{% block page_title %}Competency frameworks{% endblock %}
+{% block page_subtitle %}The units and performance criteria learners are assessed against{% endblock %}
+{% block page_tools %}{% if can('competencies.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('frameworks.new') }}">{{ icon('layers') }} New framework</a>{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  {% if frameworks %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Framework</th><th>Trade</th><th>Level</th><th class="num">Competencies</th><th>Status</th></tr></thead>
+    <tbody>{% for f in frameworks %}<tr>
+      <td class="wrap"><a href="{{ url_for('frameworks.detail', public_id=f.public_id) }}"><strong>{{ f.name }}</strong></a></td>
+      <td class="wrap">{{ f.trade or '—' }}</td><td class="wrap">{{ f.level or '—' }}</td>
+      <td class="nowrap num">{{ f.competencies|length }}</td>
+      <td class="nowrap"><span class="badge badge-fw-{{ f.status }}">{{ f.status_label }}</span></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}
+  <div class="empty-state center"><p class="muted">No competency frameworks yet. A framework lists the units of competence for a trade, for example the CTVET or NVTI standard, and the criteria assessors check.</p>
+    {% if can('competencies.manage') %}<a class="btn btn-primary" href="{{ url_for('frameworks.new') }}">{{ icon('layers') }} Create a framework</a>{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

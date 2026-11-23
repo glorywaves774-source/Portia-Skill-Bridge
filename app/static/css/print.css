@@ -1,0 +1,13 @@
+/* Printouts always white, whatever the screen theme. */
+html, html[data-theme="dark"] { color-scheme: light; }
+body, html[data-theme="dark"] body { background: #fff !important; color: #000 !important; }
+.backdrop, .sidebar, .tabbar, .drawer-scrim, .topbar-tools, .menu-button, .app-back, .site-header, .site-footer, .skip-link { display: none !important; }
+.panel, .glass { background: #fff !important; box-shadow: none !important; border: 1px solid #ccc !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; color: #000 !important; }
+.topbar { position: static !important; background: #fff !important; box-shadow: none !important; border: 0 !important; }
+.muted, .kpi-note, .topbar-sub, .details dt { color: #444 !important; }
+a { color: #000 !important; }
+.table-wrap { overflow: visible !important; }
+.app-content { padding: 0 !important; }
+/* Reports: print the results, not the filter controls */
+.report-form, .report-filters .chip-row, .table-view summary { display: none !important; }
+.chart-box { break-inside: avoid; }

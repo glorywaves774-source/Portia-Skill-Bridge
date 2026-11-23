@@ -1,0 +1,62 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block page_title %}{{ lesson.title }}{% endblock %}
+{% block page_subtitle %}{{ lesson.kind_label }} · {{ c.title }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('learn.course', public_id=c.public_id) }}">{{ icon('arrow-left') }} Course outline</a></p>
+<section class="panel lesson-view">
+  {% include "learn/_lesson_body.html" %}
+  {% if lesson.files %}
+  <ul class="doc-list">{% for lf in lesson.files %}<li><span class="doc-icon" aria-hidden="true">{{ icon('file-text') }}</span>
+    <div class="doc-meta"><a href="{{ url_for('learn.download', public_id=c.public_id, lesson_id=lesson.public_id, file_id=lf.public_id) }}">{{ lf.title }}</a><span class="muted small">{{ lf.file.extension }} · {{ lf.file.size_label }}</span></div></li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if lesson.is_assessed %}
+  <div class="quiz-box">
+    {% if best %}<p><strong>Your best result: {{ best.percent }}%</strong> — {% if best.passed %}<span class="badge badge-active">Passed</span>{% else %}<span class="badge badge-past_due">Not passed yet</span>{% endif %}</p>{% endif %}
+    {% if attempts %}<p class="muted small">Attempts: {% for a in attempts %}<a href="{{ url_for('learn.attempt', public_id=c.public_id, attempt_id=a.public_id) }}">{{ a.percent }}%{% if a.late %} (late){% endif %}</a>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+    {% if open_attempt %}
+      <a class="btn btn-primary" href="{{ url_for('learn.attempt', public_id=c.public_id, attempt_id=open_attempt.public_id) }}">{{ icon('play') }} Continue your attempt</a>
+    {% elif left == 0 %}
+      <p class="muted">You've used all {{ lesson.max_attempts }} attempts.</p>
+    {% else %}
+      <form method="post" action="{{ url_for('learn.start', public_id=c.public_id, lesson_id=lesson.public_id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if lesson.time_limit_minutes %}<p class="muted small">{{ icon('timer') }} The timer starts when you press Start and keeps running if you leave the page.</p>{% endif %}
+        <button class="btn btn-primary" type="submit">{{ icon('play') }} {{ 'Start the exam' if lesson.kind == 'exam' else ('Try again' if attempts else 'Start the quiz') }}</button>
+        {% if left is not none %}<span class="muted small">{{ left }} attempt{{ '' if left == 1 else 's' }} left</span>{% endif %}
+      </form>
+    {% endif %}
+  </div>
+  {% elif lesson.kind == 'assignment' %}
+  <div class="quiz-box">
+    {% if submission %}
+      <p><strong>Submitted {{ submission.submitted_at|date('%d %b %Y %H:%M') }}</strong>{% if submission.file %} · <a href="{{ url_for('learn.my_submission_file', public_id=c.public_id, lesson_id=lesson.public_id) }}">{{ submission.file.original_name }}</a>{% endif %}</p>
+      {% if submission.is_graded %}
+        <p class="grade-line"><span class="badge badge-active">Marked</span> <strong>{{ submission.score }}/{{ lesson.max_score }}</strong></p>
+        {% if submission.feedback %}<div class="feedback">{{ submission.feedback|richtext }}</div>{% endif %}
+      {% else %}<p class="muted">Waiting for your trainer to mark it. You can still change your answer.</p>{% endif %}
+    {% endif %}
+    {% if not submission or not submission.is_graded %}
+    <form method="post" action="{{ url_for('learn.submit', public_id=c.public_id, lesson_id=lesson.public_id) }}" enctype="multipart/form-data" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label class="field-label" for="text">Your answer</label><textarea id="text" name="text" maxlength="20000" rows="6">{{ submission.text if submission and submission.text else '' }}</textarea></div>
+      <div class="field"><label class="field-label" for="file">Attach a file (optional: PDF, Word, PowerPoint, Excel, JPG or PNG)</label><input id="file" type="file" name="file" accept=".pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png"></div>
+      <button class="btn btn-primary" type="submit">{{ icon('send') }} {{ 'Update my answer' if submission else 'Submit' }}</button>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <form method="post" action="{{ url_for('learn.complete', public_id=c.public_id, lesson_id=lesson.public_id) }}" class="complete-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-primary" type="submit">{{ icon('check') }} {{ 'Done, next lesson' if next else 'Mark as complete' }}</button>
+    {% if lesson.id in done %}<span class="muted small">{{ icon('circle-check') }} You've completed this lesson.</span>{% endif %}
+  </form>
+  {% endif %}
+</section>
+<nav class="lesson-nav" aria-label="Lessons">
+  {% if prev %}<a class="btn btn-ghost" href="{{ url_for('learn.lesson', public_id=c.public_id, lesson_id=prev.public_id) }}">{{ icon('arrow-left') }} Previous</a>{% else %}<span></span>{% endif %}
+  {% if next %}<a class="btn btn-ghost" href="{{ url_for('learn.lesson', public_id=c.public_id, lesson_id=next.public_id) }}">Next {{ icon('arrow-right') }}</a>{% endif %}
+</nav>
+{% endblock %}

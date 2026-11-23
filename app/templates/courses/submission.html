@@ -1,0 +1,25 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Mark assignment{% endblock %}
+{% block page_title %}{{ sub.lesson.title }}{% endblock %}
+{% block page_subtitle %}<span translate="no">{{ sub.learner.full_name }}</span> · submitted {{ sub.submitted_at|date('%d %b %Y %H:%M') }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('courses.detail', public_id=c.public_id, tab='submissions') }}">{{ icon('arrow-left') }} All submissions</a></p>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Learner's answer</h2></header>
+    {% if sub.text %}<div class="answer-text" translate="no">{{ sub.text|richtext }}</div>{% endif %}
+    {% if sub.file %}<p><a class="btn btn-ghost" href="{{ url_for('courses.submission_file', public_id=c.public_id, submission_id=sub.public_id) }}">{{ icon('file-text') }} {{ sub.file.original_name }} ({{ sub.file.size_label }})</a></p>{% endif %}
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Mark</h2>{% if sub.is_graded %}<span class="badge badge-active">Marked {{ sub.graded_at|date }}</span>{% endif %}</header>
+    <form method="post" class="stack" novalidate>
+      {{ form.hidden_tag() }}
+      {{ field(form.score, inputmode="numeric", hint="Out of " ~ sub.lesson.max_score) }}
+      {{ field(form.feedback) }}
+      <button class="btn btn-primary" type="submit">{{ icon('check') }} Save mark</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

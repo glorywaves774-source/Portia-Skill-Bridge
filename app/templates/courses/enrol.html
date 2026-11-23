@@ -1,0 +1,22 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Enrol learners{% endblock %}
+{% block page_title %}Enrol learners{% endblock %}
+{% block page_subtitle %}{{ c.title }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('courses.detail', public_id=c.public_id, tab='learners') }}">{{ icon('arrow-left') }} Back to course</a></p>
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Name or learner number"></div>
+    <button class="btn btn-ghost" type="submit">{{ icon('search') }} Search</button>
+  </form>
+  {% if candidates %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="pick-head"><label class="check-all"><input type="checkbox" data-check-all="learner"> Select all shown ({{ candidates|length }})</label></div>
+    <ul class="pick-list">{% for l in candidates %}<li><label><input type="checkbox" name="learner" value="{{ l.public_id }}"><span class="avatar-initials" aria-hidden="true">{{ l.initials }}</span><span class="pick-meta"><strong translate="no">{{ l.full_name }}</strong><span class="muted small mono">{{ l.learner_no }}</span></span></label></li>{% endfor %}</ul>
+    <div class="form-actions sticky-actions"><button class="btn btn-primary" type="submit">{{ icon('user-plus') }} Enrol selected</button></div>
+  </form>
+  {% else %}<p class="empty muted">No learners to add.</p>{% endif %}
+</section>
+{% endblock %}

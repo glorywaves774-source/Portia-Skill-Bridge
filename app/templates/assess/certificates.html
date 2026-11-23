@@ -1,0 +1,43 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Certificates{% endblock %}
+{% block page_title %}Certificates{% endblock %}
+{% block page_subtitle %}Issued by <span translate="no">{{ g.workspace.name }}</span>{% endblock %}
+{% block page_tools %}<a class="btn btn-ghost btn-sm" href="{{ url_for('verify.form') }}" target="_blank" rel="noopener">{{ icon('shield-check') }} Public verification page</a>{% endblock %}
+{% block content %}
+{% if ready_prog or ready_course %}
+<section class="panel">
+  <header class="panel-head"><h2>Ready to issue</h2></header>
+  <form method="post" class="bulk-form" id="bulk">
+    {{ bulk_form.hidden_tag() }}
+    <div class="form-grid">{{ field(bulk_form.signatory_name, placeholder="e.g. Esi Boateng") }}{{ field(bulk_form.signatory_title, placeholder="e.g. Centre Director") }}</div>
+  </form>
+  <ul class="doc-list">
+    {% for p, n in ready_prog %}<li><span class="doc-icon" aria-hidden="true">{{ icon('layers') }}</span>
+      <div class="doc-meta"><strong>{{ p.name }}</strong><span class="muted small">{{ n }} learner{{ '' if n == 1 else 's' }} completed the programme</span></div>
+      <button class="btn btn-primary btn-sm" type="submit" form="bulk" formaction="{{ url_for('certificates.bulk', kind='programme', public_id=p.public_id) }}">Issue {{ n }}</button></li>{% endfor %}
+    {% for c, n in ready_course %}<li><span class="doc-icon" aria-hidden="true">{{ icon('book-open') }}</span>
+      <div class="doc-meta"><strong>{{ c.title }}</strong><span class="muted small">{{ n }} learner{{ '' if n == 1 else 's' }} completed the course</span></div>
+      <button class="btn btn-primary btn-sm" type="submit" form="bulk" formaction="{{ url_for('certificates.bulk', kind='course', public_id=c.public_id) }}">Issue {{ n }}</button></li>{% endfor %}
+  </ul>
+  <p class="muted small">Certificates of competence are issued one at a time from the assessment or the learner's record.</p>
+</section>
+{% endif %}
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Name, certificate number or verification code"></div>
+    <button class="btn btn-ghost" type="submit">{{ icon('search') }} Search</button>
+  </form>
+  {% if certificates %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Learner</th><th>Certificate</th><th>Number</th><th>Issued</th><th>Status</th></tr></thead>
+    <tbody>{% for c in certificates %}<tr>
+      <td class="wrap" translate="no">{{ c.learner.full_name }}</td>
+      <td class="wrap"><a href="{{ url_for('certificates.detail', public_id=c.public_id) }}">{{ c.title }}</a><br><span class="muted small">{{ c.kind_label }}</span></td>
+      <td class="nowrap mono">{{ c.number }}</td><td class="nowrap">{{ c.issued_on|date }}</td>
+      <td class="nowrap"><span class="badge {{ 'badge-active' if c.status_label == 'Valid' else 'badge-suspended' }}">{{ c.status_label }}</span></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">{% if q %}No certificates match.{% else %}No certificates issued yet.{% endif %}</p>{% endif %}
+</section>
+{% endblock %}

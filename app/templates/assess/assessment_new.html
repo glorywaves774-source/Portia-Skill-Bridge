@@ -1,0 +1,22 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}New assessment{% endblock %}
+{% block page_title %}New skills assessment{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('assessments.index') }}">{{ icon('arrow-left') }} All assessments</a></p>
+{% if no_frameworks %}
+<section class="panel"><p class="muted">There's no active competency framework yet.{% if can('competencies.manage') %} <a href="{{ url_for('frameworks.new') }}">Create one</a> first.{% else %} Ask an administrator to set one up.{% endif %}</p></section>
+{% else %}
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.learner, cls="span-2") }}
+    {{ field(form.framework, cls="span-2") }}
+    {{ field(form.kind) }}{{ field(form.assessed_on) }}
+    {{ field(form.programme) }}{{ field(form.location) }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('arrow-right') }} Start rating</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

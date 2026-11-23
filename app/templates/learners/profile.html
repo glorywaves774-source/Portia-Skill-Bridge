@@ -1,0 +1,277 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ learner.full_name }}{% endblock %}
+{% block page_title %}<span translate="no">{{ learner.full_name }}</span>{% endblock %}
+{% block page_subtitle %}<span class="mono">{{ learner.learner_no }}</span> · {{ learner.status_label }}{% endblock %}
+{% block page_tools %}{% if manage %}<a class="btn btn-primary btn-sm" href="{{ url_for('learners.edit', public_id=learner.public_id) }}">{{ icon('settings') }} Edit</a>{% endif %}{% endblock %}
+{% macro del_btn(url) -%}
+<form method="post" action="{{ url }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="Delete" title="Delete">{{ icon('x') }}</button></form>
+{%- endmacro %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('learners.index') }}">{{ icon('arrow-left') }} All learners</a></p>
+
+<section class="panel learner-head">
+  <div class="learner-photo">
+    {% if learner.photo_file_id %}<img src="{{ url_for('learners.photo', public_id=learner.public_id) }}" alt="Passport photo of {{ learner.full_name }}" width="150" height="200">
+    {% else %}<span class="photo-placeholder" aria-label="No photo">{{ learner.initials }}</span>{% endif %}
+    {% if manage %}
+    <form method="post" action="{{ url_for('learners.upload_photo', public_id=learner.public_id) }}" enctype="multipart/form-data" class="photo-form">
+      {{ forms.photo.hidden_tag() }}
+      <label class="btn btn-ghost btn-sm file-btn">{{ icon('user') }} {{ 'Change photo' if learner.photo_file_id else 'Add photo' }}{{ forms.photo.photo(accept="image/jpeg,image/png,image/webp", class_="visually-hidden file-auto") }}</label>
+      <noscript><button class="btn btn-ghost btn-sm" type="submit">Upload</button></noscript>
+    </form>
+    {% if learner.photo_file_id %}<form method="post" action="{{ url_for('learners.remove_photo', public_id=learner.public_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="link-button small" type="submit">Remove photo</button></form>{% endif %}
+    {% endif %}
+  </div>
+  <dl class="details learner-facts">
+    <div><dt>Learner number</dt><dd class="mono">{{ learner.learner_no }}</dd></div>
+    <div><dt>Gender</dt><dd>{{ learner.gender_label }}</dd></div>
+    <div><dt>Age</dt><dd>{% if learner.age() is not none %}{{ learner.age() }}{% if show_id and learner.date_of_birth %} <span class="muted small nowrap">({{ learner.date_of_birth|date }})</span>{% endif %}{% else %}—{% endif %}</dd></div>
+    <div><dt>Phone</dt><dd class="nowrap" translate="no">{{ learner.phone or '—' }}</dd></div>
+    <div><dt>Location</dt><dd translate="no">{{ [learner.city, learner.district, learner.region]|select|join(', ') or '—' }}</dd></div>
+    <div><dt>Status</dt><dd><span class="badge badge-learner-{{ learner.status }}">{{ learner.status_label }}</span></dd></div>
+    <div><dt>Can sign in</dt><dd>{{ 'Yes' if learner.user_id else 'No' }}</dd></div>
+  </dl>
+</section>
+
+<nav class="tabs" aria-label="Learner record">
+  {% for t in tabs %}<a href="{{ url_for('learners.profile', public_id=learner.public_id, tab=t) }}" class="{% if tab == t %}is-active{% endif %}" {% if tab == t %}aria-current="page"{% endif %}>{{ {'overview': 'Overview', 'training': 'Training', 'competencies': 'Competencies', 'education': 'Education', 'skills': 'Skills', 'employment': 'Employment', 'documents': 'Documents'}[t] }}{% if t == 'documents' and learner.documents %} <span class="tab-count">{{ learner.documents|length }}</span>{% endif %}</a>{% endfor %}
+</nav>
+
+{% if tab == 'overview' %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Personal and contact</h2></header>
+    <dl class="details">
+      <div><dt>Full name</dt><dd translate="no">{{ learner.full_name }}</dd></div>
+      <div><dt>Nationality</dt><dd>{{ learner.nationality or '—' }}</dd></div>
+      <div><dt>ID document</dt><dd>{% if learner.id_number %}{{ LEARNER_LABELS.id_types.get(learner.id_type, '') }} <span class="mono" translate="no">{{ learner.id_number if show_id else learner.masked_id_number }}</span>{% else %}—{% endif %}</dd></div>
+      <div><dt>Other phone</dt><dd class="nowrap" translate="no">{{ learner.alt_phone or '—' }}</dd></div>
+      <div><dt>Email</dt><dd translate="no">{{ learner.email or '—' }}</dd></div>
+      <div><dt>Address</dt><dd translate="no">{{ learner.address or '—' }}</dd></div>
+      <div><dt>Emergency contact</dt><dd translate="no">{% if learner.emergency_name %}{{ learner.emergency_name }}{% if learner.emergency_relation %} ({{ learner.emergency_relation }}){% endif %} <span class="nowrap">{{ learner.emergency_phone or '' }}</span>{% else %}—{% endif %}</dd></div>
+    </dl>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Background</h2></header>
+    <dl class="details">
+      <div><dt>Highest education</dt><dd>{{ LEARNER_LABELS.education.get(learner.education_level or '', '—') }}</dd></div>
+      <div><dt>Employment at registration</dt><dd>{{ LEARNER_LABELS.employment.get(learner.employment_status or '', '—') }}</dd></div>
+      <div><dt>Disability</dt><dd>{% if learner.has_disability %}Yes{% if learner.disability_details and show_id %}: <span translate="no">{{ learner.disability_details }}</span>{% endif %}{% else %}No{% endif %}</dd></div>
+      <div><dt>Categories</dt><dd>{% for c in learner.categories %}<span class="chip">{{ LEARNER_LABELS.categories.get(c, c) }}</span> {% else %}—{% endfor %}</dd></div>
+      <div><dt>Registered</dt><dd class="nowrap">{{ learner.registered_on|date }}</dd></div>
+    </dl>
+    {% if learner.notes and show_id %}<p class="notes" translate="no">{{ learner.notes }}</p>{% endif %}
+  </section>
+</div>
+{% if manage %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Status</h2></header>
+    <form method="post" action="{{ url_for('learners.status', public_id=learner.public_id) }}" class="toolbar">
+      {{ forms.status.hidden_tag() }}
+      <div class="field grow"><label class="visually-hidden" for="st-status">Status</label>{{ forms.status.status() }}</div>
+      <button class="btn btn-primary" type="submit">Update</button>
+    </form>
+    <p class="muted small">Archived records don't count towards your plan's learner limit.</p>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Sign-in for this learner</h2></header>
+    {% if learner.user_id %}<p class="muted">This learner can sign in and see their own profile.</p>
+    {% else %}
+    <form method="post" action="{{ url_for('learners.invite', public_id=learner.public_id) }}" class="stack" novalidate>
+      {{ forms.invite.hidden_tag() }}
+      {{ field(forms.invite.email, inputmode="email") }}
+      <button class="btn btn-ghost" type="submit">{{ icon('mail') }} Invite to sign in</button>
+      <p class="muted small">They'll be able to see their profile, keep their contact details up to date and upload documents.</p>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% if can('members.manage') %}
+<section class="panel danger-panel">
+  <header class="panel-head"><h2>Delete permanently</h2></header>
+  <form method="post" action="{{ url_for('learners.delete', public_id=learner.public_id) }}" class="toolbar" novalidate>
+    {{ forms.delete.hidden_tag() }}
+    <div class="field grow"><label class="field-label" for="del-confirm">Type <span class="mono">{{ learner.learner_no }}</span> to confirm</label>{{ forms.delete.confirm(autocomplete="off") }}</div>
+    <button class="btn btn-danger" type="submit">{{ icon('x') }} Delete record and files</button>
+  </form>
+  <p class="muted small">Use this for data-protection requests. The record, photo and documents are erased and can't be recovered. To keep the record but stop using it, set the status to Archived instead.</p>
+</section>
+{% endif %}
+{% endif %}
+
+{% elif tab == 'training' %}
+<section class="panel">
+  <header class="panel-head"><h2>Programmes</h2></header>
+  {% if training.enrolments %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Programme</th><th>Enrolled</th><th class="num">Attendance</th><th>Status</th></tr></thead>
+    <tbody>{% for e in training.enrolments %}{% set r = training.rates[e.id] %}<tr>
+      <td class="wrap">{% if can('programmes.view') %}<a href="{{ url_for('programmes.detail', public_id=e.programme.public_id) }}">{{ e.programme.name }}</a>{% else %}{{ e.programme.name }}{% endif %}<br><span class="muted small mono">{{ e.programme.code }}</span></td>
+      <td class="nowrap">{{ e.enrolled_on|date }}</td>
+      <td class="nowrap num">{% if r and r.rate is not none %}{{ r.rate }}% <span class="muted small">({{ r.attended }}/{{ r.recorded }})</span>{% else %}—{% endif %}</td>
+      <td class="nowrap"><span class="badge">{{ e.status_label }}</span>{% if e.completed_on %} <span class="muted small">{{ e.completed_on|date }}</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">Not enrolled in any programme yet.</p>{% endif %}
+</section>
+<section class="panel">
+  <header class="panel-head"><h2>Online courses</h2></header>
+  {% if training.courses %}
+  <ul class="usage-list">{% for ce in training.courses %}
+    <li><div class="usage-top"><span>{{ ce.course.title }}</span><span class="muted nowrap">{% if ce.completed_at %}Completed {{ ce.completed_at|date }}{% else %}{{ ce.progress }}%{% endif %}</span></div>
+      <progress max="100" value="{{ ce.progress }}"></progress></li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">Not enrolled in any online course yet.</p>{% endif %}
+</section>
+
+{% elif tab == 'competencies' %}
+{% if competence.eligible %}
+<div class="notice notice-info">{{ icon('award') }}<div><strong>{{ competence.eligible|length }} certificate{{ '' if competence.eligible|length == 1 else 's' }} ready to issue:</strong> <span class="muted">{{ competence.eligible|map(attribute='title')|join(', ') }}.</span> <a href="{{ url_for('certificates.issue', learner_id=learner.public_id) }}">Issue now</a></div></div>
+{% endif %}
+<section class="panel">
+  <header class="panel-head"><h2>Certificates</h2>{% if can('certificates.issue') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('certificates.issue', learner_id=learner.public_id) }}">{{ icon('award') }} Issue</a>{% endif %}</header>
+  {% if competence.certificates %}
+  <ul class="doc-list">{% for c in competence.certificates %}<li><span class="doc-icon" aria-hidden="true">{{ icon('award') }}</span>
+    <div class="doc-meta"><a href="{{ url_for('certificates.pdf', public_id=c.public_id) }}" target="_blank" rel="noopener">{{ c.title }}</a>
+      <span class="muted small">{{ c.kind_label }} · <span class="mono">{{ c.number }}</span> · {{ c.issued_on|date }}</span></div>
+    <span class="badge {{ 'badge-active' if c.status_label == 'Valid' else 'badge-suspended' }}">{{ c.status_label }}</span></li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">No certificates yet.</p>{% endif %}
+</section>
+{% if can('assessments.view') %}
+{% for fw, rows in competence.profiles %}
+<section class="panel">
+  <header class="panel-head"><h2>{{ fw.name }}</h2><span class="muted small">{{ rows|selectattr('achieved')|list|length }}/{{ rows|length }} competent</span></header>
+  <ul class="profile-bars">{% for r in rows %}
+    <li><div class="usage-top"><span><span class="comp-code mono">{{ r.competency.code }}</span> {{ r.competency.title }}</span>
+      <span class="nowrap small">{% if r.level %}{% if r.achieved %}<span class="badge badge-active">Competent</span>{% else %}<span class="badge badge-past_due">Gap: {{ r.gap }} level{{ '' if r.gap == 1 else 's' }}</span>{% endif %}{% else %}<span class="muted">Not assessed</span>{% endif %}</span></div>
+      <div class="level-bar" aria-label="Level {{ r.level or 0 }} of 4, needs {{ r.required }}">{% for i in range(1, 5) %}<span class="{{ 'on' if r.level and i <= r.level else '' }} {{ 'need' if i == r.required else '' }}"></span>{% endfor %}</div></li>{% endfor %}</ul>
+</section>
+{% endfor %}
+<section class="panel">
+  <header class="panel-head"><h2>Assessments</h2>{% if can('assessments.conduct') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('assessments.new', learner=learner.public_id) }}">{{ icon('clipboard-check') }} Assess</a>{% endif %}</header>
+  {% if competence.assessments %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Framework</th><th>Type</th><th>Date</th><th>Result</th></tr></thead>
+    <tbody>{% for a in competence.assessments %}<tr>
+      <td class="wrap"><a href="{{ url_for('assessments.detail', public_id=a.public_id) }}">{{ a.framework.name }}</a></td>
+      <td class="nowrap">{{ a.kind_label }}</td><td class="nowrap">{{ a.assessed_on|date }}</td>
+      <td class="nowrap"><span class="badge {{ 'badge-active' if a.competent else ('badge-past_due' if a.is_final else 'badge-trialing') }}">{{ a.result_label }}</span></td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">Not assessed yet.</p>{% endif %}
+</section>
+{% endif %}
+
+{% elif tab == 'education' %}
+<section class="panel">
+  {% if learner.education %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Qualification</th><th>Institution</th><th>Field</th><th>Years</th>{% if manage %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for e in learner.education %}<tr>
+      <td class="wrap"><strong>{{ e.qualification }}</strong>{% if e.level %}<br><span class="muted small">{{ LEARNER_LABELS.education.get(e.level, '') }}</span>{% endif %}</td>
+      <td class="wrap">{{ e.institution }}</td><td class="wrap">{{ e.field_of_study or '—' }}</td>
+      <td class="nowrap">{{ e.start_year or '' }}–{{ e.end_year or 'now' }}</td>
+      {% if manage %}<td>{{ del_btn(url_for('learners.delete_education', public_id=learner.public_id, record_id=e.id)) }}</td>{% endif %}
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No education records yet.</p>{% endif %}
+</section>
+{% if manage %}
+<section class="panel"><header class="panel-head"><h2>Add education</h2></header>
+  <form method="post" action="{{ url_for('learners.add_education', public_id=learner.public_id) }}" class="form-grid" novalidate>
+    {{ forms.education.hidden_tag() }}
+    {{ field(forms.education.qualification) }}{{ field(forms.education.institution) }}
+    {{ field(forms.education.field_of_study) }}{{ field(forms.education.level) }}
+    {{ field(forms.education.start_year, inputmode="numeric") }}{{ field(forms.education.end_year, inputmode="numeric") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">Add</button></div>
+  </form></section>
+{% endif %}
+
+{% elif tab == 'skills' %}
+<section class="panel">
+  {% if learner.skills %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Skill</th><th>Level</th><th>Certified</th><th>Year</th>{% if manage %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for s in learner.skills %}<tr>
+      <td class="wrap"><strong>{{ s.name }}</strong></td><td class="nowrap">{{ s.level_label }}</td>
+      <td class="wrap">{% if s.certified %}Yes{% if s.certificate_body %} ({{ s.certificate_body }}){% endif %}{% else %}No{% endif %}</td>
+      <td class="nowrap">{{ s.year or '—' }}</td>
+      {% if manage %}<td>{{ del_btn(url_for('learners.delete_skill', public_id=learner.public_id, record_id=s.id)) }}</td>{% endif %}
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No skills recorded yet. Skills are added here automatically when a competency certificate is issued.</p>{% endif %}
+</section>
+{% if manage %}
+<section class="panel"><header class="panel-head"><h2>Add a skill or qualification</h2></header>
+  <form method="post" action="{{ url_for('learners.add_skill', public_id=learner.public_id) }}" class="form-grid" novalidate>
+    {{ forms.skills.hidden_tag() }}
+    {{ field(forms.skills.name, placeholder="e.g. Tailoring, Welding, Excel") }}{{ field(forms.skills.level) }}
+    {{ field(forms.skills.certificate_body, placeholder="e.g. CTVET, NVTI") }}{{ field(forms.skills.year, inputmode="numeric") }}
+    <div class="span-2">{{ checkbox(forms.skills.certified) }}</div>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">Add</button></div>
+  </form></section>
+{% endif %}
+
+{% elif tab == 'employment' %}
+{% if jobs and (jobs.placements or jobs.applications or can('applicants.manage')) and can('vacancies.view') %}
+<section class="panel">
+  <header class="panel-head"><h2>Placements and job applications</h2>{% if can('placements.manage') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('placements.new', learner=learner.public_id) }}">{{ icon('handshake') }} Record a placement</a>{% endif %}</header>
+  {% if jobs.placements or jobs.applications %}
+  <ul class="doc-list">
+    {% for p in jobs.placements %}<li><span class="doc-icon" aria-hidden="true">{{ icon('handshake') }}</span>
+      <div class="doc-meta"><a href="{{ url_for('placements.detail', public_id=p.public_id) }}"><strong>{{ p.job_title }}</strong></a><span class="muted small"><span translate="no">{{ p.employer_name }}</span> · from {{ p.start_date|date }}{% set nxt = p.follow_ups|rejectattr('is_done')|first %}{% if p.is_active and nxt %} · {{ nxt.months }}-month check due {{ nxt.due_on|date('%d %b') }}{% endif %}</span></div>
+      <span class="badge {{ 'badge-active' if p.is_active else '' }}">{{ p.status_label }}</span></li>{% endfor %}
+    {% for a in jobs.applications if a.status != 'hired' %}<li><span class="doc-icon" aria-hidden="true">{{ icon('briefcase') }}</span>
+      <div class="doc-meta"><a href="{{ url_for('jobs.application', public_id=a.public_id) }}"><strong>{{ a.vacancy.title }}</strong></a><span class="muted small"><span translate="no">{{ a.vacancy.employer.name }}</span> · {{ 'applied' if a.source == 'applied' else 'put forward' }} {{ a.created_at|date }}</span></div>
+      <span class="badge badge-app-{{ a.status }}">{{ a.status_label }}</span></li>{% endfor %}
+  </ul>
+  {% else %}<p class="empty muted">No placements or job applications yet.</p>{% endif %}
+</section>
+{% endif %}
+<section class="panel">
+  <header class="panel-head"><h2>Employment history</h2></header>
+  {% if learner.employment %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Position</th><th>Employer</th><th>Type</th><th>Dates</th>{% if show_id %}<th class="num">Monthly income</th>{% endif %}{% if manage %}<th></th>{% endif %}</tr></thead>
+    <tbody>{% for j in learner.employment %}<tr>
+      <td class="wrap"><strong>{{ j.position }}</strong>{% if j.is_current %} <span class="badge badge-active">Current</span>{% endif %}</td>
+      <td class="wrap">{{ j.employer }}{% if j.location %}<br><span class="muted small">{{ j.location }}</span>{% endif %}</td>
+      <td class="nowrap">{{ j.type_label }}</td>
+      <td class="nowrap">{{ j.start_date|date('%b %Y') }} – {{ j.end_date|date('%b %Y') if j.end_date else 'now' }}</td>
+      {% if show_id %}<td class="nowrap num">{{ j.monthly_income_minor|money if j.monthly_income_minor is not none else '—' }}</td>{% endif %}
+      {% if manage %}<td>{{ del_btn(url_for('learners.delete_employment', public_id=learner.public_id, record_id=j.id)) }}</td>{% endif %}
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No employment history yet.</p>{% endif %}
+</section>
+{% if manage %}
+<section class="panel"><header class="panel-head"><h2>Add employment</h2></header>
+  <form method="post" action="{{ url_for('learners.add_employment', public_id=learner.public_id) }}" class="form-grid" novalidate>
+    {{ forms.employment.hidden_tag() }}
+    {{ field(forms.employment.position) }}{{ field(forms.employment.employer) }}
+    {{ field(forms.employment.employment_type) }}{{ field(forms.employment.sector) }}
+    {{ field(forms.employment.start_date) }}{{ field(forms.employment.end_date) }}
+    {{ field(forms.employment.location) }}{{ field(forms.employment.monthly_income, inputmode="numeric") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">Add</button></div>
+  </form></section>
+{% endif %}
+
+{% else %}
+<section class="panel">
+  {% if learner.documents %}
+  <ul class="doc-list">{% for d in learner.documents %}
+    <li>
+      <span class="doc-icon" aria-hidden="true">{{ icon('file-text') }}</span>
+      <div class="doc-meta"><a href="{{ url_for('learners.download', public_id=learner.public_id, doc_id=d.public_id) }}">{{ d.title }}</a>
+        <span class="muted small">{{ d.type_label }} · {{ d.file.extension }} · {{ d.file.size_label }} · {{ d.created_at|date }}{% if d.uploaded_by_learner %} · uploaded by the learner{% endif %}</span></div>
+      {% if manage %}{{ del_btn(url_for('learners.delete_document', public_id=learner.public_id, doc_id=d.public_id)) }}{% endif %}
+    </li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">No documents yet.</p>{% endif %}
+</section>
+{% if manage %}
+<section class="panel"><header class="panel-head"><h2>Upload a document</h2></header>
+  <form method="post" action="{{ url_for('learners.add_document', public_id=learner.public_id) }}" enctype="multipart/form-data" class="form-grid" novalidate>
+    {{ forms.documents.hidden_tag() }}
+    {{ field(forms.documents.doc_type) }}{{ field(forms.documents.title, placeholder="e.g. SHS certificate") }}
+    <div class="field span-2"><label class="field-label" for="doc-file">{{ forms.documents.file.label.text }}</label>{{ forms.documents.file(accept=".pdf,.docx,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png") }}<span class="field-hint">Up to {{ config.MAX_CONTENT_LENGTH // 1048576 }} MB. Photos of documents are cleaned of hidden location data.</span></div>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('file-text') }} Upload</button></div>
+  </form></section>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}My profile{% endblock %}
+{% block page_title %}My profile{% endblock %}
+{% block page_subtitle %}{% if learner %}<span class="mono">{{ learner.learner_no }}</span> · <span translate="no">{{ g.workspace.name }}</span>{% endif %}{% endblock %}
+{% block content %}
+{% if not learner %}
+<section class="panel"><p class="muted">Your learner record hasn't been linked to your account yet. Ask your training centre to send you a sign-in invitation from your learner record.</p></section>
+{% else %}
+<section class="panel learner-head">
+  <div class="learner-photo">
+    {% if learner.photo_file_id %}<img src="{{ url_for('me.my_photo') }}" alt="Your passport photo" width="150" height="200">{% else %}<span class="photo-placeholder" aria-label="No photo">{{ learner.initials }}</span>{% endif %}
+  </div>
+  <dl class="details learner-facts">
+    <div><dt>Name</dt><dd translate="no">{{ learner.full_name }}</dd></div>
+    <div><dt>Learner number</dt><dd class="mono">{{ learner.learner_no }}</dd></div>
+    <div><dt>Status</dt><dd>{{ learner.status_label }}</dd></div>
+    <div><dt>Registered</dt><dd class="nowrap">{{ learner.registered_on|date }}</dd></div>
+  </dl>
+</section>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Contact details</h2></header>
+    <form method="post" class="form-grid" novalidate>
+      {{ form.hidden_tag() }}
+      {{ field(form.phone, inputmode="tel", autocomplete="tel") }}{{ field(form.alt_phone, inputmode="tel") }}
+      {{ field(form.email, inputmode="email", autocomplete="email", cls="span-2") }}
+      {{ field(form.address, cls="span-2", autocomplete="street-address") }}
+      {{ field(form.city, autocomplete="address-level2") }}{{ field(form.district) }}
+      {{ field(form.region) }}<div></div>
+      {{ field(form.emergency_name) }}{{ field(form.emergency_phone, inputmode="tel") }}
+      {{ field(form.emergency_relation) }}
+      <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Save</button></div>
+    </form>
+    <p class="muted small">To correct your name, date of birth or ID details, ask your training centre.</p>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>My documents</h2></header>
+    {% if learner.documents %}
+    <ul class="doc-list">{% for d in learner.documents %}
+      <li><span class="doc-icon" aria-hidden="true">{{ icon('file-text') }}</span>
+        <div class="doc-meta"><a href="{{ url_for('me.my_document', doc_id=d.public_id) }}">{{ d.title }}</a><span class="muted small">{{ d.type_label }} · {{ d.file.size_label }}</span></div>
+        {% if d.uploaded_by_learner %}<form method="post" action="{{ url_for('me.my_document_delete', doc_id=d.public_id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="Delete">{{ icon('x') }}</button></form>{% endif %}
+      </li>{% endfor %}</ul>
+    {% else %}<p class="empty muted">No documents yet.</p>{% endif %}
+    <form method="post" action="{{ url_for('me.my_document_upload') }}" enctype="multipart/form-data" class="stack doc-upload" novalidate>
+      {{ doc_form.hidden_tag() }}
+      <div class="form-grid">{{ field(doc_form.doc_type) }}{{ field(doc_form.title, placeholder="e.g. My CV") }}</div>
+      <div class="field"><label class="field-label" for="doc-file">{{ doc_form.file.label.text }}</label>{{ doc_form.file(accept=".pdf,.docx,.jpg,.jpeg,.png") }}</div>
+      <button class="btn btn-primary" type="submit">{{ icon('file-text') }} Upload</button>
+    </form>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

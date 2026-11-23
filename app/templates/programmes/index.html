@@ -1,0 +1,30 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Programmes{% endblock %}
+{% block page_title %}Training programmes{% endblock %}
+{% block page_subtitle %}{{ programmes|length }} shown{% if usage.limit %} · {{ usage.used }} of {{ usage.limit }} on your plan{% endif %}{% endblock %}
+{% block page_tools %}{% if can('programmes.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('programmes.new') }}">{{ icon('layers') }} New programme</a>{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Name, code or trade"></div>
+    <div class="field"><label class="visually-hidden" for="status">Status</label><select id="status" name="status"><option value="">Not cancelled</option>{% for k, v in statuses.items() %}<option value="{{ k }}" {% if status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}<option value="all" {% if status == 'all' %}selected{% endif %}>All</option></select></div>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Filter</button>
+  </form>
+  {% if programmes %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Programme</th><th>Code</th><th>Dates</th><th class="num">Learners</th><th class="num">Attendance</th><th>Status</th></tr></thead>
+    <tbody>{% for p in programmes %}<tr>
+      <td class="wrap"><a href="{{ url_for('programmes.detail', public_id=p.public_id) }}"><strong>{{ p.name }}</strong></a>{% if p.trade %}<br><span class="muted small">{{ p.trade }} · {{ p.mode_label }}</span>{% endif %}</td>
+      <td class="nowrap mono">{{ p.code }}</td>
+      <td class="nowrap">{{ p.start_date|date('%d %b %Y') }}{% if p.end_date %} – {{ p.end_date|date('%d %b %Y') }}{% endif %}</td>
+      <td class="nowrap num">{{ p.active_enrolments|length }}{% if p.capacity %} / {{ p.capacity }}{% endif %}</td>
+      <td class="nowrap num">{{ (rates[p.id] ~ '%') if rates[p.id] is not none else '—' }}</td>
+      <td class="nowrap"><span class="badge badge-prog-{{ p.status }}">{{ p.status_label }}</span></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}
+  <div class="empty-state center"><p class="muted">{% if q or status %}No programmes match.{% else %}No training programmes yet.{% endif %}</p>
+    {% if not q and can('programmes.manage') %}<a class="btn btn-primary" href="{{ url_for('programmes.new') }}">{{ icon('layers') }} Create the first programme</a>{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

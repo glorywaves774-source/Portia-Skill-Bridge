@@ -1,0 +1,35 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Payments{% endblock %}
+{% block page_title %}Payments{% endblock %}
+{% block page_subtitle %}Subscription payments across all workspaces{% endblock %}
+{% block content %}
+{% if not online %}<div class="notice notice-warn">{{ icon('circle-alert') }}<span><strong>Online payment is off.</strong> Set <span class="mono">PAYSTACK_SECRET_KEY</span> to switch it on. Payments can still be recorded on each workspace's page.</span></div>
+{% elif test_mode %}<div class="notice notice-info">{{ icon('info') }}<span><strong>Test mode.</strong> Paystack is using {{ 'the practice checkout' if backend == 'fake' else 'a test key' }}; no real money moves.</span></div>{% endif %}
+<section class="panel">
+  <div class="stat-row">
+    <div><p class="stat-value">{{ totals.month|money }}</p><p class="stat-label">Received this month ({{ totals.count_month }})</p></div>
+    <div><p class="stat-value">{{ totals.year|money }}</p><p class="stat-label">Received this year</p></div>
+    <div><p class="stat-value">{{ totals.failed_week }}</p><p class="stat-label">Failed in the last 7 days</p></div>
+    <div><p class="stat-value">{{ totals.past_due }}</p><p class="stat-label">Workspaces with payment due</p></div>
+  </div>
+</section>
+<section class="panel">
+  <form class="toolbar" method="get">
+    <div class="field"><label class="visually-hidden" for="status">Status</label><select id="status" name="status" class="auto-submit"><option value="">All except cancelled</option>{% for k, label in statuses.items() %}<option value="{{ k }}" {% if status == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    <button class="btn btn-ghost" type="submit">{{ icon('filter') }} Filter</button>
+  </form>
+  {% if invoices %}<div class="table-wrap"><table class="table">
+    <thead><tr><th>Invoice</th><th>Workspace</th><th>For</th><th>Date</th><th class="num">Amount</th><th>Paid with</th><th>Status</th></tr></thead>
+    <tbody>{% for inv in invoices %}<tr>
+      <td class="nowrap mono">{{ inv.number }}</td>
+      <td class="wrap"><a href="{{ url_for('admin.tenant_detail', code=inv.tenant.code) }}" translate="no">{{ inv.tenant.name }}</a></td>
+      <td class="wrap">{{ inv.description }}{% if inv.automatic %} <span class="muted small">· automatic</span>{% endif %}</td>
+      <td class="nowrap">{{ (inv.paid_at or inv.created_at)|date }}</td>
+      <td class="num nowrap">{{ inv.amount_minor|money(inv.currency) }}</td>
+      <td class="wrap small">{{ inv.channel_detail or inv.channel_label or '—' }}{% if inv.failure_reason and not inv.is_paid %}<br><span class="muted">{{ inv.failure_reason }}</span>{% endif %}</td>
+      <td class="nowrap"><span class="badge badge-inv-{{ inv.status }}">{{ inv.status_label }}</span></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>{% else %}<p class="muted">No payments yet.</p>{% endif %}
+</section>
+{% endblock %}

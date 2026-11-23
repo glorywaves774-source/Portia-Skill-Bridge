@@ -1,0 +1,71 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Start your free trial{% endblock %}
+{% block grid_class %} is-wide{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('rocket') }}</span>
+<h1>Create your account</h1>
+<p class="muted">Start with a free trial. No card needed.</p>
+
+<nav class="segmented auth-kind" aria-label="Account type">
+  <a href="{{ url_for('auth.signup', **{'for': 'organization'}) }}" class="{% if kind == 'organization' %}is-active{% endif %}" {% if kind == 'organization' %}aria-current="page"{% endif %}>{{ icon('building-2') }} Organization</a>
+  <a href="{{ url_for('auth.signup', **{'for': 'individual'}) }}" class="{% if kind == 'individual' %}is-active{% endif %}" {% if kind == 'individual' %}aria-current="page"{% endif %}>{{ icon('user') }} Individual</a>
+</nav>
+
+{% if error %}<div class="flash flash-error" role="alert">{{ icon('circle-alert') }}<span>{{ error }}</span>{% if 'Sign in' in error %} <a href="{{ url_for('auth.signin') }}">Sign in</a>{% endif %}</div>{% endif %}
+
+<form method="post" action="{{ url_for('auth.signup') }}" class="auth-form" novalidate>
+  {{ form.hidden_tag() }}
+  <input type="hidden" name="kind" value="{{ kind }}">
+
+  <fieldset class="form-section">
+    <legend>Choose a plan</legend>
+    <div class="plan-options">
+      {% set plans = org_plans if kind == 'organization' else ind_plans %}
+      {% for p in plans %}
+      <label class="plan-option">
+        <input type="radio" name="plan" value="{{ p.code }}" {% if form.plan.data == p.code %}checked{% endif %}>
+        <span class="plan-option-body">
+          <strong>{{ p.name }}</strong>
+          <span class="nowrap">{% if p.is_free %}Free{% else %}{{ p.monthly_price_minor|money(p.currency) }}/month{% endif %}</span>
+          <span class="muted small">{% if p.trial_days %}{{ p.trial_days }}-day free trial{% else %}No payment needed{% endif %}</span>
+        </span>
+      </label>
+      {% endfor %}
+    </div>
+    {% if form.plan.errors %}<span class="field-error">{{ form.plan.errors|join(' ') }}</span>{% endif %}
+    <div class="radio-row" role="radiogroup" aria-label="Billing">
+      {% for sub in form.billing_cycle %}<label class="pill-radio">{{ sub() }}<span>{{ sub.label.text }}</span></label>{% endfor %}
+    </div>
+    {% if kind == 'organization' %}<p class="muted small">Need a plan for a national programme? <a href="{{ url_for('public.pricing') }}">See Enterprise</a>.</p>{% endif %}
+  </fieldset>
+
+  {% if kind == 'organization' %}
+  <fieldset class="form-section">
+    <legend>Your organization</legend>
+    <div class="form-grid">
+      {{ field(form.organization_name, autocomplete="organization", cls="span-2") }}
+      {{ field(form.organization_type) }}
+      {{ field(form.city, autocomplete="address-level2") }}
+    </div>
+  </fieldset>
+  {% endif %}
+
+  <fieldset class="form-section">
+    <legend>About you</legend>
+    <div class="form-grid">
+      {{ field(form.full_name, autocomplete="name", cls="span-2") }}
+      {{ field(form.email, autocomplete="email", inputmode="email") }}
+      {{ field(form.phone, autocomplete="tel", inputmode="tel", placeholder="+233 …") }}
+      {% if kind == 'individual' %}{{ field(form.city, autocomplete="address-level2", cls="span-2") }}{% endif %}
+      {{ field(form.password, autocomplete="new-password", hint="At least 10 characters, with numbers or symbols.") }}
+      {{ field(form.confirm, autocomplete="new-password") }}
+    </div>
+  </fieldset>
+
+  {{ checkbox(form.accept_terms) }}
+  <button class="btn btn-primary btn-block" type="submit">Create account {{ icon('arrow-right') }}</button>
+</form>
+<p class="auth-switch">Already have an account? <a href="{{ url_for('auth.signin') }}">Sign in</a></p>
+{% endblock %}

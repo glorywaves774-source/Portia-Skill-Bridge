@@ -1,0 +1,32 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Subscription plans{% endblock %}
+{% block page_title %}Subscription plans{% endblock %}
+{% block page_subtitle %}Prices, trials and usage limits{% endblock %}
+{% block content %}
+<section class="panel">
+  <header class="panel-head"><h2>Plan catalogue</h2><span class="muted small">Select a plan to edit its prices and limits</span></header>
+  {% if plans %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Plan</th><th>Code</th><th>For</th><th class="num">Monthly</th><th class="num">Yearly</th><th class="num">Trial</th><th class="num">Learners</th><th class="num">Staff</th><th class="num">Courses</th><th class="num">In use</th><th>Status</th></tr></thead>
+      <tbody>{% for p in plans %}
+        <tr>
+          <td class="nowrap"><a href="{{ url_for('admin.plan_edit', code=p.code) }}"><strong>{{ p.name }}</strong></a></td>
+          <td class="nowrap mono">{{ p.code }}</td>
+          <td class="nowrap">{{ p.audience|capitalize }}</td>
+          <td class="nowrap num">{% if p.is_custom_pricing %}Custom{% else %}{{ p.monthly_price_minor|money(p.currency) }}{% endif %}</td>
+          <td class="nowrap num">{% if p.is_custom_pricing %}Custom{% else %}{{ p.annual_price_minor|money(p.currency) }}{% endif %}</td>
+          <td class="nowrap num">{{ p.trial_days }} days</td>
+          <td class="nowrap num">{{ p.max_learners|limit }}</td>
+          <td class="nowrap num">{{ p.max_staff|limit }}</td>
+          <td class="nowrap num">{{ p.max_courses|limit }}</td>
+          <td class="nowrap num">{{ counts.get(p.id, 0) }}</td>
+          <td class="nowrap">{% if p.is_active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge">Retired</span>{% endif %}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty muted">No plans yet. Run <code>flask seed-plans</code>.</p>{% endif %}
+</section>
+{% endblock %}

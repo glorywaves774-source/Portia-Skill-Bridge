@@ -1,0 +1,74 @@
+{% extends "layouts/public.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Plans & pricing{% endblock %}
+{% block content %}
+<section class="section">
+  <header class="section-head center">
+    <p class="eyebrow">Plans &amp; pricing</p>
+    <h1>Simple plans in Ghana cedis</h1>
+    <p class="muted">Start with a free trial. Pay monthly, or yearly and get two months free.</p>
+  </header>
+
+  <div class="pricing-switches">
+    <nav class="segmented" aria-label="Plan audience">
+      <a href="{{ url_for('public.pricing', **{'for': 'organization', 'billing': cycle}) }}" class="{% if audience == 'organization' %}is-active{% endif %}" {% if audience == 'organization' %}aria-current="page"{% endif %}>{{ icon('building-2') }} Organizations</a>
+      <a href="{{ url_for('public.pricing', **{'for': 'individual', 'billing': cycle}) }}" class="{% if audience == 'individual' %}is-active{% endif %}" {% if audience == 'individual' %}aria-current="page"{% endif %}>{{ icon('user') }} Individuals</a>
+    </nav>
+    <nav class="segmented" aria-label="Billing period">
+      <a href="{{ url_for('public.pricing', **{'for': audience, 'billing': 'monthly'}) }}" class="{% if cycle == 'monthly' %}is-active{% endif %}" {% if cycle == 'monthly' %}aria-current="page"{% endif %}>Monthly</a>
+      <a href="{{ url_for('public.pricing', **{'for': audience, 'billing': 'annual'}) }}" class="{% if cycle == 'annual' %}is-active{% endif %}" {% if cycle == 'annual' %}aria-current="page"{% endif %}>Yearly <span class="save-pill">2 months free</span></a>
+    </nav>
+  </div>
+
+  {% if not plans %}
+  <div class="panel center empty-state">
+    {{ icon('info') }}
+    <p>No plans are published yet. An administrator can run <code>flask seed-plans</code>.</p>
+  </div>
+  {% else %}
+  <div class="pricing-grid count-{{ plans|length }}">
+    {% for plan in plans %}
+    <article class="panel plan{% if plan.is_featured %} is-featured{% endif %}">
+      {% if plan.is_featured %}<span class="plan-flag">Most popular</span>{% endif %}
+      <h2 class="plan-name">{{ plan.name }}</h2>
+      <p class="muted plan-tagline">{{ plan.tagline }}</p>
+      <div class="plan-price">
+        {% if plan.is_custom_pricing %}
+          <span class="amount">Custom</span><span class="per">tailored to your programme</span>
+        {% elif plan.is_free %}
+          <span class="amount">Free</span><span class="per">forever</span>
+        {% elif cycle == 'annual' %}
+          <span class="amount nowrap">{{ plan.annual_price_minor|money(plan.currency) }}</span><span class="per">per year</span>
+          <span class="saving">You save {{ plan.annual_saving_minor|money(plan.currency) }}</span>
+        {% else %}
+          <span class="amount nowrap">{{ plan.monthly_price_minor|money(plan.currency) }}</span><span class="per">per month</span>
+        {% endif %}
+      </div>
+      <ul class="plan-limits">
+        {% if plan.audience == 'organization' %}
+        <li><span>Learners</span><strong>{{ plan.max_learners|limit }}</strong></li>
+        <li><span>Staff users</span><strong>{{ plan.max_staff|limit }}</strong></li>
+        {% endif %}
+        <li><span>Courses</span><strong>{{ plan.max_courses|limit }}</strong></li>
+        <li><span>Storage</span><strong>{% if plan.storage_mb is none %}Unlimited{% elif plan.storage_mb >= 1000 %}{{ (plan.storage_mb / 1000)|round|int }} GB{% else %}{{ plan.storage_mb }} MB{% endif %}</strong></li>
+      </ul>
+      <ul class="plan-features">
+        {% for feature in plan.features %}<li>{{ icon('check') }}<span>{{ feature }}</span></li>{% endfor %}
+      </ul>
+      {% if plan.is_custom_pricing %}
+      {% if config.SALES_EMAIL %}<a class="btn btn-ghost btn-block plan-cta" href="mailto:{{ config.SALES_EMAIL }}?subject=PORTIA%20SkillBridge%20Enterprise">Contact sales</a>{% endif %}
+      {% else %}
+      <a class="btn {{ 'btn-primary' if plan.is_featured else 'btn-ghost' }} btn-block plan-cta" href="{{ url_for('auth.signup', **{'for': plan.audience, 'plan': plan.code, 'billing': cycle}) }}">{{ 'Get started' if plan.is_free else 'Start free trial' }}</a>
+      {% endif %}
+      <p class="plan-trial muted small">
+        {% if plan.is_custom_pricing %}Contact {{ app_developer }} for a quote.
+        {% elif plan.trial_days %}{{ plan.trial_days }}-day free trial, no card needed.
+        {% else %}No payment needed.{% endif %}
+      </p>
+    </article>
+    {% endfor %}
+  </div>
+  <p class="muted small center pricing-note">Prices include all platform updates. Trials need no card. Pay online with Mobile Money (MTN, Telecel, AirtelTigo) or a card through Paystack, or by bank transfer.</p>
+  {% endif %}
+</section>
+{% endblock %}

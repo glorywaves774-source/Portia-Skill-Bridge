@@ -1,0 +1,65 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Assessment: {{ a.learner.full_name }}{% endblock %}
+{% block page_title %}<span translate="no">{{ a.learner.full_name }}</span>: {{ a.framework.name }}{% endblock %}
+{% block page_subtitle %}{{ a.kind_label }} · {{ a.assessed_on|date }}{% if a.assessor %} · assessor <span translate="no">{{ a.assessor.full_name }}</span>{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('assessments.index') }}">{{ icon('arrow-left') }} All assessments</a></p>
+{% if a.is_final %}
+<section class="panel result-banner {{ 'is-pass' if a.competent else 'is-fail' }}">
+  <span class="result-icon">{{ icon('award' if a.competent else 'circle-alert') }}</span>
+  <div><strong>{{ a.result_label }}</strong><p class="muted small">Finalised {{ a.finalised_at|date('%d %b %Y %H:%M') }}. Finalised results can't be changed; a new assessment can be recorded if needed.</p></div>
+  {% if a.competent and can('certificates.issue') %}<a class="btn btn-primary btn-sm" href="{{ url_for('certificates.issue', learner_id=a.learner.public_id) }}">{{ icon('award') }} Issue certificate</a>{% endif %}
+</section>
+{% elif not editable %}
+<div class="notice notice-info">{{ icon('info') }}<div>This assessment is in progress with <span translate="no">{{ a.assessor.full_name if a.assessor else 'another assessor' }}</span>.</div></div>
+{% endif %}
+
+<form method="post" class="rating-form" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% for c in a.framework.competencies %}{% set r = a.rating_for(c.id) %}
+  <section class="panel comp-rating {{ ('is-achieved' if r.achieved else 'is-gap') if r and a.is_final else '' }}">
+    <header class="comp-head"><span class="comp-code mono">{{ c.code }}</span><strong>{{ c.title }}</strong><span class="muted small">needs level {{ c.required_level }}</span></header>
+    {% if c.criteria %}
+    <fieldset class="criteria-check"><legend class="field-label">Performance criteria observed</legend>
+      {% for cr in c.criteria %}<label class="crit"><input type="checkbox" name="crit-{{ c.id }}" value="{{ loop.index0 }}" {% if r and loop.index0 in r.criteria_met %}checked{% endif %} {% if not editable %}disabled{% endif %}><span>{{ cr }}</span></label>{% endfor %}
+    </fieldset>
+    {% endif %}
+    <fieldset class="level-pick"><legend class="field-label">Rating</legend>
+      {% for k, v in levels.items() %}<label class="lvl lvl-{{ k }}"><input type="radio" name="level-{{ c.id }}" value="{{ k }}" {% if r and r.level == k %}checked{% endif %} {% if not editable %}disabled{% endif %}><span><b>{{ k }}</b> {{ v }}</span></label>{% endfor %}
+    </fieldset>
+    {% if editable %}<label class="visually-hidden" for="note-{{ c.id }}">Comment</label><input id="note-{{ c.id }}" type="text" name="note-{{ c.id }}" maxlength="500" placeholder="Comment (optional)" value="{{ r.comment if r and r.comment else '' }}">
+    {% elif r and r.comment %}<p class="muted small">{{ r.comment }}</p>{% endif %}
+  </section>
+  {% endfor %}
+  <section class="panel">
+    <div class="field"><label class="field-label" for="comments">Overall comments</label>
+      {% if editable %}<textarea id="comments" name="comments" maxlength="5000" rows="3">{{ a.comments or '' }}</textarea>{% else %}<p>{{ a.comments or '—' }}</p>{% endif %}</div>
+  </section>
+  {% if editable %}
+  <div class="form-actions sticky-actions rating-actions">
+    <button class="btn btn-ghost" type="submit" name="action" value="save">{{ icon('check') }} Save draft</button>
+    <button class="btn btn-primary" type="submit" name="action" value="finalise">{{ icon('award') }} Finalise result</button>
+  </div>
+  {% endif %}
+</form>
+
+<section class="panel" id="evidence">
+  <header class="panel-head"><h2>Evidence</h2></header>
+  {% if a.evidence %}
+  <ul class="doc-list">{% for ev in a.evidence %}<li><span class="doc-icon" aria-hidden="true">{{ icon('file-text') }}</span>
+    <div class="doc-meta"><a href="{{ url_for('assessments.evidence', public_id=a.public_id, ev_id=ev.public_id) }}">{{ ev.title }}</a><span class="muted small">{{ ev.file.extension }} · {{ ev.file.size_label }}</span></div>
+    {% if editable %}<form method="post" action="{{ url_for('assessments.delete_evidence', public_id=a.public_id, ev_id=ev.public_id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="Remove evidence">{{ icon('x') }}</button></form>{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">No evidence attached.</p>{% endif %}
+  {% if editable %}
+  <form method="post" action="{{ url_for('assessments.add_evidence', public_id=a.public_id) }}" enctype="multipart/form-data" class="form-grid doc-upload" novalidate>
+    {{ evidence_form.hidden_tag() }}
+    {{ field(evidence_form.title, placeholder="e.g. Photo of finished garment") }}
+    <div class="field"><label class="field-label" for="ev-file">{{ evidence_form.file.label.text }}</label>{{ evidence_form.file(accept=".pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png") }}</div>
+    <div class="span-2 form-actions"><button class="btn btn-ghost" type="submit">{{ icon('file-text') }} Add evidence</button></div>
+  </form>
+  <form method="post" action="{{ url_for('assessments.delete', public_id=a.public_id) }}" class="discard-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="link-button small" type="submit">Delete this draft</button></form>
+  {% endif %}
+</section>
+{% endblock %}

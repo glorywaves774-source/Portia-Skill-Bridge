@@ -1,0 +1,59 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% from "jobs/_macros.html" import app_badge, fit_pill, fit_reasons, pay %}
+{% block title %}{{ v.title }}{% endblock %}
+{% block page_title %}{{ v.title }}{% endblock %}
+{% block page_subtitle %}<span translate="no">{{ v.employer.name }}</span>{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('myjobs.index') }}">{{ icon('arrow-left') }} Jobs for me</a></p>
+{% if mine %}
+<section class="panel result-banner">
+  <span class="result-icon fit-icon">{{ icon('briefcase') }}</span>
+  <div><p><strong>{{ {'applied': 'Application sent', 'nominated': 'You have been put forward for this job', 'shortlisted': "You've been shortlisted", 'interview': 'Interview arranged', 'offered': "You've been offered the job", 'hired': "You got the job. Congratulations!", 'not_selected': 'Not selected this time', 'withdrawn': 'You withdrew'}[mine.status] }}</strong></p>
+    {% if mine.status == 'interview' and mine.interview_at %}<p class="muted">{{ mine.interview_at|date('%A %d %B %Y, %H:%M') }}{% if mine.interview_location %} · {{ mine.interview_location }}{% endif %}</p>{% endif %}
+    {% if mine.status == 'not_selected' %}<p class="muted">Keep going: new jobs are added often.</p>{% endif %}</div>
+  {{ app_badge(mine) }}
+</section>
+{% endif %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>The job</h2></header>
+    <dl class="details">
+      <div><dt>Type</dt><dd>{{ v.type_label }}</dd></div>
+      <div><dt>Where</dt><dd>{{ v.place }}</dd></div>
+      <div><dt>Pay</dt><dd>{{ pay(v) }}</dd></div>
+      <div><dt>Positions</dt><dd>{{ v.positions }}</dd></div>
+      <div><dt>Closes</dt><dd class="nowrap">{{ v.closing_date|date }}</dd></div>
+    </dl>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>How you fit</h2>{{ fit_pill(fit.score) }}</header>
+    {% if fit.parts %}{{ fit_reasons(fit) }}{% else %}<p class="muted small">This job doesn't list specific skills.</p>{% endif %}
+    {% if fit.missing %}<p class="muted small">Ask your trainer about being assessed in: {% for c in fit.missing %}{{ c.code }} {{ c.title }}{{ ', ' if not loop.last }}{% endfor %}.</p>{% endif %}
+  </section>
+</div>
+{% if v.description or v.requirements %}
+<section class="panel prose">
+  {% if v.description %}<h2>About the job</h2>{{ v.description|richtext }}{% endif %}
+  {% if v.requirements %}<h2>Requirements</h2>{{ v.requirements|richtext }}{% endif %}
+</section>
+{% endif %}
+{% if form %}
+<section class="panel">
+  <header class="panel-head"><h2>Apply</h2></header>
+  <form method="post" action="{{ url_for('myjobs.apply', public_id=v.public_id) }}" class="stack" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.cover_note, hint="Your profile, skills and certificates are shared with the centre automatically.") }}
+    <div class="form-actions"><button class="btn btn-primary" type="submit">{{ icon('send') }} Send application</button></div>
+  </form>
+</section>
+{% elif mine and mine.is_open %}
+<form method="post" action="{{ url_for('myjobs.withdraw', public_id=v.public_id) }}" class="discard-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button class="btn btn-ghost btn-sm" type="submit">Withdraw my application</button>
+</form>
+{% elif not mine %}
+<section class="panel"><p class="muted">This job isn't taking applications{{ '' if v.is_accepting else ' any more' }}.</p></section>
+{% endif %}
+{% endblock %}

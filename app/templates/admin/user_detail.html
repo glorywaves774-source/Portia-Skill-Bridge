@@ -1,0 +1,59 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ person.full_name }}{% endblock %}
+{% block page_title %}<span translate="no">{{ person.full_name }}</span>{% endblock %}
+{% block page_subtitle %}<span translate="no">{{ person.email }}</span>{% endblock %}
+{% macro action(name, label, ic, cls="btn-ghost") -%}
+<form method="post" action="{{ url_for('admin.user_action', public_id=person.public_id) }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="{{ name }}">
+  <button class="btn {{ cls }}" type="submit">{{ icon(ic) }} {{ label }}</button>
+</form>
+{%- endmacro %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('admin.users') }}">{{ icon('arrow-left') }} All people</a></p>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Account</h2>{% if not person.is_active_account %}<span class="badge badge-suspended">Deactivated</span>{% elif person.is_locked() %}<span class="badge badge-past_due">Locked</span>{% else %}<span class="badge badge-active">Active</span>{% endif %}</header>
+    <dl class="details">
+      <div><dt>Phone</dt><dd class="nowrap" translate="no">{{ person.phone or '—' }}</dd></div>
+      <div><dt>Super Administrator</dt><dd>{{ 'Yes' if person.is_platform_admin else 'No' }}</dd></div>
+      <div><dt>Two-step sign-in</dt><dd>{{ "On" if person.two_factor_enabled else "Off" }}</dd></div>
+      <div><dt>Created</dt><dd class="nowrap">{{ person.created_at|date }}</dd></div>
+      <div><dt>Last sign-in</dt><dd class="nowrap">{{ person.last_login_at|date('%d %b %Y %H:%M') }}</dd></div>
+      <div><dt>Password changed</dt><dd class="nowrap">{{ person.password_changed_at|date }}</dd></div>
+      {% if person.is_locked() %}<div><dt>Locked until</dt><dd class="nowrap">{{ person.locked_until|date('%d %b %Y %H:%M') }}</dd></div>{% endif %}
+    </dl>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Actions</h2></header>
+    <div class="action-stack">
+      {{ action('send_reset', 'Email a password reset link', 'key-round') }}
+      {% if person.is_locked() %}{{ action('unlock', 'Clear sign-in lock', 'lock') }}{% endif %}
+      {% if person.two_factor_enabled %}{{ action('reset_2fa', 'Turn off two-step sign-in (lost phone)', 'shield') }}{% endif %}
+      {% if person.id != current_user.id %}
+        {% if person.is_active_account %}{{ action('deactivate', 'Deactivate account', 'pause', 'btn-danger') }}{% else %}{{ action('reactivate', 'Reactivate account', 'play') }}{% endif %}
+        {% if person.is_platform_admin %}{{ action('revoke_admin', 'Remove Super Administrator access', 'shield-check') }}{% else %}{{ action('grant_admin', 'Make Super Administrator', 'shield-check') }}{% endif %}
+      {% endif %}
+    </div>
+    <p class="muted small">Deactivating signs the person out everywhere and blocks sign-in on every workspace. Their records stay.</p>
+  </section>
+</div>
+<section class="panel">
+  <header class="panel-head"><h2>Workspaces</h2></header>
+  {% if workspaces %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Workspace</th><th>Roles</th><th>Status</th></tr></thead>
+    <tbody>{% for w in workspaces %}
+      <tr><td class="wrap"><a href="{{ url_for('admin.tenant_detail', code=w.tenant.code) }}" translate="no">{{ w.tenant.name }}</a>{% if w.owner %} <span class="badge badge-trialing">Owner</span>{% endif %}</td>
+      <td class="wrap">{{ w.roles|join(', ') }}</td>
+      <td class="nowrap">{% if w.active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge">Inactive</span>{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="empty muted">Not in any workspace.</p>{% endif %}
+</section>
+<section class="panel">
+  <header class="panel-head"><h2>Recent actions by this person</h2></header>
+  {% if events %}<ul class="activity">{% for e in events %}<li><span class="activity-dot"></span><div><p><strong>{{ e.action }}</strong></p><p class="muted small">{% if e.summary %}<span translate="no">{{ e.summary }}</span> · {% endif %}<span class="nowrap">{{ e.created_at|date('%d %b %Y %H:%M') }}</span>{% if e.ip_address %} · <span class="mono">{{ e.ip_address }}</span>{% endif %}</p></div></li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">Nothing recorded yet.</p>{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,207 @@
+# Render Blueprint for PORTIA SkillBridge.
+# Deploy: Render Dashboard -> New -> Blueprint -> pick this repository. See docs/GO-LIVE.md.
+# Plans are paid tiers because the pre-deploy migration step and cron jobs need them.
+services:
+  - type: web
+    name: portia-skillbridge
+    runtime: python
+    plan: 0.5c-512mb
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    preDeployCommand: flask db upgrade && flask seed-plans
+    startCommand: gunicorn -c gunicorn.conf.py wsgi:app
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: PYTHON_VERSION
+        value: "3.13.1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: portia-skillbridge-db
+          property: connectionString
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SECURITY_CONTACT
+        sync: false
+      - key: SALES_EMAIL
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: BILLING_GRACE_DAYS
+        value: "7"
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: MAIL_BACKEND
+        value: smtp
+      - key: MAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      # Uploaded photos/documents and backups. Render's disk is wiped on every deploy, so use an
+      # S3-compatible bucket (Cloudflare R2, AWS S3, Backblaze B2, DigitalOcean Spaces…).
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_ENDPOINT_URL
+        sync: false
+      - key: STORAGE_REGION
+        sync: false
+      - key: STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      # Make with `flask backup make-key`. Keep a copy off Render: backups can't be opened without it.
+      - key: BACKUP_ENCRYPTION_KEY
+        sync: false
+
+  # Daily: billing reminders, automatic renewals, subscription changes, follow-up alerts, queued emails.
+  - type: cron
+    name: portia-skillbridge-subscriptions
+    runtime: python
+    plan: 0.5c-512mb
+    region: frankfurt
+    schedule: "17 1 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: flask subscriptions process
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: PYTHON_VERSION
+        value: "3.13.1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: portia-skillbridge-db
+          property: connectionString
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: BILLING_GRACE_DAYS
+        value: "7"
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: MAIL_BACKEND
+        value: smtp
+      - key: MAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      # Uploaded photos/documents and backups. Render's disk is wiped on every deploy, so use an
+      # S3-compatible bucket (Cloudflare R2, AWS S3, Backblaze B2, DigitalOcean Spaces…).
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_ENDPOINT_URL
+        sync: false
+      - key: STORAGE_REGION
+        sync: false
+      - key: STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: STORAGE_SECRET_ACCESS_KEY
+        sync: false
+
+  # Every 10 minutes: email queued notifications (quick when there's nothing to send).
+  - type: cron
+    name: portia-skillbridge-notifications
+    runtime: python
+    plan: 0.5c-512mb
+    region: frankfurt
+    schedule: "*/10 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: flask notifications send
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: PYTHON_VERSION
+        value: "3.13.1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: portia-skillbridge-db
+          property: connectionString
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: MAIL_BACKEND
+        value: smtp
+      - key: MAIL_FROM
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+
+  # Daily: encrypted database backup to the storage bucket (kept 30 days).
+  - type: cron
+    name: portia-skillbridge-backup
+    runtime: python
+    plan: 0.5c-512mb
+    region: frankfurt
+    schedule: "41 2 * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: flask backup create
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: FLASK_APP
+        value: wsgi.py
+      - key: PYTHON_VERSION
+        value: "3.13.1"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: portia-skillbridge-db
+          property: connectionString
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      # Uploaded photos/documents and backups. Render's disk is wiped on every deploy, so use an
+      # S3-compatible bucket (Cloudflare R2, AWS S3, Backblaze B2, DigitalOcean Spaces…).
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_ENDPOINT_URL
+        sync: false
+      - key: STORAGE_REGION
+        sync: false
+      - key: STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: STORAGE_SECRET_ACCESS_KEY
+        sync: false
+      # Make with `flask backup make-key`. Keep a copy off Render: backups can't be opened without it.
+      - key: BACKUP_ENCRYPTION_KEY
+        sync: false
+
+databases:
+  - name: portia-skillbridge-db
+    plan: 0.1c-256mb
+    region: frankfurt
+    ipAllowList: []   # no connections from the internet; only the services above (Render's private network)

@@ -1,0 +1,25 @@
+<!doctype html>
+{# Stored on devices by the service worker, so it must never contain anything about a person or a session. #}
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>You're offline · {{ app_name }}</title>
+  <meta name="theme-color" content="#0B1B33">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/logo-mark.svg') }}">
+  <script src="{{ url_for('static', filename='js/theme-init.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dark.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+</head>
+<body class="public">
+  <main class="dev-checkout offline-page">
+    <div class="panel center">
+      <img src="{{ url_for('static', filename='img/pwa/icon-192.png') }}" alt="" width="72" height="72" class="offline-logo">
+      <h1>You're offline</h1>
+      <p class="muted">{{ app_name }} needs the internet to show your records, so nothing private is kept on this device. Check your mobile data or Wi-Fi, then try again.</p>
+      <a class="btn btn-primary btn-block" href="/app/">Try again</a>
+    </div>
+  </main>
+</body>
+</html>

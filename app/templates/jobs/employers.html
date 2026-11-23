@@ -1,0 +1,30 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Employers{% endblock %}
+{% block page_title %}Employers{% endblock %}
+{% block page_subtitle %}{{ employers|length }} shown{% endblock %}
+{% block page_tools %}{% if can('vacancies.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('employers.new') }}">{{ icon('building-2') }} Add employer</a>{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Name, town or contact person"></div>
+    <div class="field"><label class="visually-hidden" for="show">Show</label><select id="show" name="show"><option value="active">Active</option><option value="inactive" {% if show == 'inactive' %}selected{% endif %}>Inactive</option><option value="all" {% if show == 'all' %}selected{% endif %}>All</option></select></div>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Filter</button>
+  </form>
+  {% if employers %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Employer</th><th>Sector</th><th>Place</th><th>Contact</th><th class="num">Open jobs</th><th class="num">In work</th></tr></thead>
+    <tbody>{% for e in employers %}<tr>
+      <td class="wrap"><a href="{{ url_for('employers.detail', public_id=e.public_id) }}" translate="no"><strong>{{ e.name }}</strong></a>{% if not e.is_active %} <span class="badge">Inactive</span>{% endif %}</td>
+      <td class="wrap">{{ e.sector_label }}</td>
+      <td class="wrap">{{ e.place }}</td>
+      <td class="wrap" translate="no">{{ e.contact_name or '—' }}{% if e.phone %}<br><span class="muted small nowrap">{{ e.phone }}</span>{% endif %}</td>
+      <td class="nowrap num">{{ e.vacancies|selectattr('status', 'equalto', 'open')|list|length }}</td>
+      <td class="nowrap num">{{ e.placements|selectattr('status', 'equalto', 'active')|list|length }}</td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}
+  <div class="empty-state center"><p class="muted">{% if q or show != 'active' %}No employers match.{% else %}No employers yet. Add the companies and businesses that take on your learners.{% endif %}</p>
+    {% if not q and can('vacancies.manage') %}<a class="btn btn-primary" href="{{ url_for('employers.new') }}">{{ icon('building-2') }} Add the first employer</a>{% endif %}</div>
+  {% endif %}
+</section>
+{% endblock %}

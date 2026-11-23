@@ -1,0 +1,98 @@
+{% extends "layouts/base.html" %}
+{% from "partials/_macros.html" import icon, theme_toggle, flashes %}
+{% block body_class %}app{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/helpbot.js') }}" defer></script>{% endblock %}
+{% block body %}
+{% set nav = navigation() %}
+<div class="backdrop" aria-hidden="true"></div>
+<div class="app-shell">
+  <aside class="sidebar" id="app-menu" data-drawer aria-label="Main menu">
+    <div class="sidebar-head">
+      <a class="brand brand-inverse" href="{{ url_for('public.index') }}">{% include "partials/_brand.html" %}</a>
+      <button type="button" class="btn-icon sidebar-close" data-drawer-close aria-label="Close menu">{{ icon('x') }}</button>
+    </div>
+
+    {% if nav.context == 'workspace' %}
+    <div class="workspace-card">
+      <span class="workspace-avatar" aria-hidden="true">{{ g.workspace.name[:1]|upper }}</span>
+      <div class="workspace-meta">
+        <strong translate="no">{{ g.workspace.name }}</strong>
+        <span>{{ g.workspace.organization_type_label }}</span>
+      </div>
+      {% if g.workspace_count > 1 %}<a class="workspace-switch" href="{{ url_for('auth.choose_workspace') }}" title="Switch workspace">Switch</a>{% endif %}
+    </div>
+    {% elif nav.context == 'admin' %}
+    <div class="workspace-card is-admin">
+      <span class="workspace-avatar" aria-hidden="true">{{ icon('shield-check') }}</span>
+      <div class="workspace-meta"><strong>Super Administrator</strong><span>Entire platform</span></div>
+    </div>
+    {% endif %}
+
+    <label class="nav-filter">
+      {{ icon('search') }}
+      <span class="visually-hidden">Find a page</span>
+      <input type="search" placeholder="Find a page" data-nav-filter="#nav-list" autocomplete="off">
+    </label>
+    <nav id="nav-list" class="nav-list">
+      {% for title, items in nav.sections %}
+      <p class="nav-section">{{ title }}</p>
+        {% for item in items %}
+        <a class="nav-link{% if item.active %} is-active{% endif %}" href="{{ item.url }}" data-nav-item {% if item.active %}aria-current="page"{% endif %}>{{ icon(item.icon) }}<span>{{ item.label }}</span></a>
+        {% endfor %}
+      {% endfor %}
+      {% if current_user.is_platform_admin and nav.context != 'admin' %}
+      <a class="nav-link" href="{{ url_for('admin.overview') }}" data-nav-item>{{ icon('shield-check') }}<span>Super Admin console</span></a>
+      {% endif %}
+      {% if nav.context == 'admin' and g.get('workspace_count', 0) %}
+      <a class="nav-link" href="{{ url_for('auth.choose_workspace') }}" data-nav-item>{{ icon('building-2') }}<span>My workspaces</span></a>
+      {% endif %}
+      <p class="nav-empty" data-nav-empty hidden>No matching pages</p>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="user-chip">
+        <span class="user-avatar" aria-hidden="true">{{ current_user.full_name[:1]|upper }}</span>
+        <div><strong translate="no">{{ current_user.full_name }}</strong><span translate="no">{{ current_user.email }}</span></div>
+      </div>
+      <button type="button" class="btn-install" data-install-app hidden>{{ icon('download') }} Install app</button>
+      <a class="btn-install" data-install-ios hidden href="{{ url_for('help.guide', open='how-do-i-install-the-app-on-my-phone') }}#topic-how-do-i-install-the-app-on-my-phone">{{ icon('download') }} Install app</a>
+      <form method="post" action="{{ url_for('auth.signout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn-signout">{{ icon('log-out') }} Sign out</button>
+      </form>
+    </div>
+  </aside>
+  <div class="drawer-scrim" data-drawer-scrim aria-hidden="true"></div>
+
+  <div class="app-main">
+    <header class="topbar glass">
+      <div class="topbar-title-row">
+        <button type="button" class="btn-icon menu-button" data-drawer-open aria-controls="app-menu" aria-expanded="false" aria-label="Open menu">{{ icon('menu') }}</button>
+        <button type="button" class="btn-icon app-back" data-app-back aria-label="Back">{{ icon('arrow-left') }}</button>
+        <div class="topbar-title">
+          <h1>{% block page_title %}{% endblock %}</h1>
+          <p class="topbar-sub">{% block page_subtitle %}{% endblock %}</p>
+        </div>
+      </div>
+      <div class="topbar-tools">
+        {% block page_tools %}{% endblock %}
+        {% if g.get('workspace') %}{% set unread = unread_notifications() %}<a class="btn-icon bell{{ ' has-unread' if unread }}" href="{{ url_for('notifications.index') }}" aria-label="Notifications{{ ', %d unread'|format(unread) if unread }}" title="Notifications">{{ icon('bell') }}{% if unread %}<span class="bell-count" aria-hidden="true">{{ unread if unread < 100 else '99+' }}</span>{% endif %}</a>{% endif %}
+        {{ theme_toggle(show_label=True) }}
+        <a class="btn-icon avatar-button" href="{{ url_for('account.profile') }}" aria-label="My account" title="My account"><span translate="no">{{ current_user.full_name[:1]|upper }}</span></a>
+      </div>
+    </header>
+    <main id="main" class="app-content">
+      {{ flashes() }}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{% include "partials/_helpbot.html" %}
+
+<nav class="tabbar" aria-label="Main destinations">
+  {% for item in nav.tabs %}
+  <a class="tab{% if item.active %} is-active{% endif %}" href="{{ item.url }}" {% if item.active %}aria-current="page"{% endif %}>{{ icon(item.icon) }}<span>{{ item.short }}</span></a>
+  {% endfor %}
+  <button type="button" class="tab" data-drawer-open aria-controls="app-menu" aria-expanded="false">{{ icon('menu') }}<span>Menu</span></button>
+</nav>
+{% endblock %}

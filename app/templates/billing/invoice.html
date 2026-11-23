@@ -1,0 +1,37 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ inv.number }}{% endblock %}
+{% block page_title %}{{ 'Receipt' if inv.is_paid else 'Invoice' }} <span class="mono">{{ inv.number }}</span>{% endblock %}
+{% block page_subtitle %}{{ inv.description }}{% endblock %}
+{% block page_tools %}<a class="btn btn-ghost btn-sm" href="{{ url_for('billing.invoice_pdf', public_id=inv.public_id) }}">{{ icon('download') }} PDF</a>{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('billing.invoices') }}">{{ icon('arrow-left') }} Invoices</a></p>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>{{ inv.amount_minor|money(inv.currency) }}</h2><span class="badge badge-inv-{{ inv.status }}">{{ inv.status_label }}</span></header>
+    <dl class="details">
+      <div><dt>Plan</dt><dd translate="no">{{ inv.plan.name }} · {{ 'yearly' if inv.billing_cycle == 'annual' else 'monthly' }}</dd></div>
+      <div><dt>Type</dt><dd>{{ inv.kind_label }}{% if inv.automatic %} (automatic){% endif %}</dd></div>
+      <div><dt>Plan price</dt><dd class="nowrap">{{ inv.price_minor|money(inv.currency) }}</dd></div>
+      {% if inv.credit_minor %}<div><dt>Credit for unused time</dt><dd class="nowrap">− {{ inv.credit_minor|money(inv.currency) }}</dd></div>{% endif %}
+      <div><dt>{{ 'Paid' if inv.is_paid else 'To pay' }}</dt><dd class="nowrap"><strong>{{ inv.amount_minor|money(inv.currency) }}</strong></dd></div>
+      {% if inv.period_start %}<div><dt>Paid period</dt><dd class="nowrap">{{ inv.period_start|date }} – {{ inv.period_end|date }}</dd></div>{% endif %}
+    </dl>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Payment</h2></header>
+    <dl class="details">
+      <div><dt>Created</dt><dd class="nowrap">{{ inv.created_at|date('%d %b %Y %H:%M') }}</dd></div>
+      {% if inv.paid_at %}<div><dt>Paid on</dt><dd class="nowrap">{{ inv.paid_at|date('%d %b %Y %H:%M') }}</dd></div>
+      <div><dt>Paid with</dt><dd>{{ inv.channel_detail or inv.channel_label or '—' }}</dd></div>{% endif %}
+      {% if inv.billing_email %}<div><dt>Receipts go to</dt><dd translate="no">{{ inv.billing_email }}</dd></div>{% endif %}
+      <div><dt>Reference</dt><dd class="mono">{{ inv.reference }}</dd></div>
+      {% if inv.failure_reason and not inv.is_paid %}<div><dt>What happened</dt><dd>{{ inv.failure_reason }}</dd></div>{% endif %}
+    </dl>
+    {% if can_pay and inv.status in ('open', 'failed') %}
+    <p class="action-row"><a class="btn btn-primary" href="{{ url_for('billing.checkout', plan=inv.plan.code, cycle=inv.billing_cycle) }}">{{ icon('credit-card') }} {{ 'Try again' if inv.status == 'failed' else 'Pay now' }}</a></p>
+    {% if inv.status == 'open' %}<p class="muted small">If you've just paid, Paystack may take a minute to confirm. Refresh this page shortly.</p>{% endif %}
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

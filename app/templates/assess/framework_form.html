@@ -1,0 +1,17 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}New framework{% endblock %}
+{% block page_title %}New competency framework{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('frameworks.index') }}">{{ icon('arrow-left') }} All frameworks</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.name, cls="span-2", placeholder="e.g. Garment Construction") }}
+    {{ field(form.trade, placeholder="e.g. Fashion design") }}{{ field(form.level, placeholder="e.g. CTVET Proficiency I") }}
+    {{ field(form.description, cls="span-2") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Create framework</button></div>
+  </form>
+</section>
+{% endblock %}

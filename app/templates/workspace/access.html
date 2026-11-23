@@ -1,0 +1,11 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Your access{% endblock %}
+{% block page_title %}Your access{% endblock %}
+{% block page_subtitle %}{{ role_labels|join(', ') }}{% if g.is_owner %} · Owner{% endif %}{% endblock %}
+{% block content %}
+<section class="panel">
+  <p class="muted">Here is what you can do in <span translate="no">{{ g.workspace.name }}</span>.</p>
+  <ul class="perm-list">{% for code, text in allowed %}<li>{{ icon('check') }}<span>{{ text }}</span></li>{% endfor %}</ul>
+</section>
+{% endblock %}

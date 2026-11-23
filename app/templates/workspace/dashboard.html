@@ -1,0 +1,114 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon, sub_badge %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Welcome, <span translate="no">{{ current_user.first_name }}</span>{% endblock %}
+{% block page_subtitle %}<span translate="no">{{ ws.name }}</span> · {{ role_labels|join(', ') }}{% endblock %}
+{% block content %}
+{% if sub and sub.is_trial %}
+<div class="notice notice-info">{{ icon('hourglass') }}<div><strong>Free trial: {{ sub.days_remaining() }} day{{ '' if sub.days_remaining() == 1 else 's' }} left.</strong>
+  <span class="muted">Your {{ sub.plan.name }} trial ends on {{ sub.trial_ends_at|date }}.{% if can('billing.view') %} <a href="{{ url_for('workspace.subscription') }}">See your plan</a>.{% endif %}</span></div></div>
+{% elif sub and sub.status == 'past_due' %}
+<div class="notice notice-warn">{{ icon('circle-alert') }}<div><strong>Payment due.</strong> <span class="muted">Your workspace keeps working until {{ sub.grace_ends_at()|date }}.</span></div></div>
+{% elif not ws.has_access %}
+<div class="notice notice-bad">{{ icon('circle-alert') }}<div><strong>Your subscription has ended.</strong> <span class="muted">Most pages are paused until it is renewed.</span></div></div>
+{% endif %}
+
+<section class="kpi-grid" aria-label="Summary">
+  <article class="panel kpi tone-teal">
+    <span class="kpi-icon">{{ icon('credit-card') }}</span>
+    <p class="kpi-label">Plan</p>
+    <p class="kpi-value">{{ sub.plan.name if sub else '—' }}</p>
+    <p class="kpi-note">{{ sub_badge(sub) }}</p>
+  </article>
+  {% if people %}
+  <article class="panel kpi tone-blue">
+    <span class="kpi-icon">{{ icon('users') }}</span>
+    <p class="kpi-label">People</p>
+    <p class="kpi-value">{{ people.total }}</p>
+    <p class="kpi-note">In this workspace</p>
+  </article>
+  {% endif %}
+  <article class="panel kpi tone-blue">
+    <span class="kpi-icon">{{ icon('hourglass') }}</span>
+    <p class="kpi-label">{{ 'Trial ends' if sub and sub.is_trial else 'Renews' }}</p>
+    <p class="kpi-value nowrap">{{ sub.current_period_end|date('%d %b') if sub else '—' }}</p>
+    <p class="kpi-note">{{ sub.days_remaining() if sub else 0 }} days left</p>
+  </article>
+</section>
+
+{% if learner_stats %}
+<section class="panel">
+  <header class="panel-head"><h2>Learners &amp; beneficiaries</h2><a class="link-arrow" href="{{ url_for('learners.index') }}">All learners {{ icon('chevron-right') }}</a></header>
+  <div class="stat-row">
+    <div><p class="stat-value">{{ learner_stats.total }}</p><p class="stat-label">Registered</p></div>
+    <div><p class="stat-value">{{ learner_stats.active }}</p><p class="stat-label">Active</p></div>
+    <div><p class="stat-value">{{ learner_stats.female_pct }}%</p><p class="stat-label">Female ({{ learner_stats.female }})</p></div>
+    <div><p class="stat-value">{{ learner_stats.pwd }}</p><p class="stat-label">With a disability</p></div>
+    <div><p class="stat-value">{{ learner_stats.new_this_month }}</p><p class="stat-label">New this month</p></div>
+  </div>
+  {% if learner_stats.regions %}
+  {% set top = learner_stats.regions|map(attribute=1)|max %}
+  <h3 class="sub-head">Top regions</h3>
+  <ul class="bar-list">{% for region, n in learner_stats.regions %}<li><span class="bar-label">{{ region }}</span><progress max="{{ top }}" value="{{ n }}">{{ n }}</progress><strong>{{ n }}</strong></li>{% endfor %}</ul>
+  {% endif %}
+  {% if not learner_stats.total and can('learners.manage') %}<p class="muted">No learners yet. <a href="{{ url_for('learners.new') }}">Register the first one</a>.</p>{% endif %}
+</section>
+{% endif %}
+
+{% if job_stats %}
+<section class="panel">
+  <header class="panel-head"><h2>Jobs and employment</h2><a class="link-arrow" href="{{ url_for('jobs.index') }}">All jobs {{ icon('chevron-right') }}</a></header>
+  <div class="stat-row">
+    <div><p class="stat-value">{{ job_stats.open_vacancies }}</p><p class="stat-label">Open vacancies</p></div>
+    <div><p class="stat-value">{{ job_stats.open_positions }}</p><p class="stat-label">Positions to fill</p></div>
+    <div><p class="stat-value">{{ job_stats.in_work }}</p><p class="stat-label">In work now</p></div>
+    {% if job_stats.placement_rate is defined %}<div><p class="stat-value">{{ (job_stats.placement_rate ~ '%') if job_stats.placement_rate is not none else '—' }}</p><p class="stat-label">Graduates placed</p></div>{% endif %}
+    <div><p class="stat-value">{{ (job_stats.retention_6m ~ '%') if job_stats.retention_6m is not none else '—' }}</p><p class="stat-label">In work at 6 months</p></div>
+  </div>
+  {% if job_stats.follow_ups_due %}<p class="notice notice-warn small">{{ icon('calendar-check') }}<span>{{ job_stats.follow_ups_due }} follow-up check{{ '' if job_stats.follow_ups_due == 1 else 's' }} overdue. <a href="{{ url_for('placements.index') }}">See placements</a>.</span></p>{% endif %}
+</section>
+{% endif %}
+
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Your access</h2><a class="link-arrow" href="{{ url_for('workspace.my_access') }}">Details {{ icon('chevron-right') }}</a></header>
+    <div class="chip-row">{% for r in role_labels %}<span class="chip">{{ icon('shield-check') }} {{ r }}</span>{% endfor %}{% if g.is_owner %}<span class="chip chip-accent">Owner</span>{% endif %}</div>
+    <p class="muted small">Your role decides which pages and actions you see. Ask a workspace administrator if you need more access.</p>
+    <ul class="quick-links">
+      {% if can('learners.view') %}<li><a href="{{ url_for('learners.index') }}">{{ icon('graduation-cap') }}<span>Learners and beneficiaries</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      {% if can('self.learning') %}<li><a href="{{ url_for('me.my_profile') }}">{{ icon('user') }}<span>My learner profile and documents</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      {% if can('self.jobs') %}<li><a href="{{ url_for('myjobs.index') }}">{{ icon('briefcase') }}<span>Jobs for me</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      {% if can('vacancies.view') %}<li><a href="{{ url_for('jobs.index') }}">{{ icon('briefcase') }}<span>Jobs and candidates</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      {% if can('reports.view') %}<li><a href="{{ url_for('reports.index') }}">{{ icon('chart-column') }}<span>Reports and indicators</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      {% if can('members.view') %}<li><a href="{{ url_for('workspace.people') }}">{{ icon('users') }}<span>People in this workspace</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      {% if can('billing.view') %}<li><a href="{{ url_for('workspace.subscription') }}">{{ icon('credit-card') }}<span>Plan and usage</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      {% if can('workspace.settings') %}<li><a href="{{ url_for('workspace.settings') }}">{{ icon('settings') }}<span>Workspace details</span>{{ icon('chevron-right') }}</a></li>{% endif %}
+      <li><a href="{{ url_for('account.profile') }}">{{ icon('user') }}<span>My account and password</span>{{ icon('chevron-right') }}</a></li>
+    </ul>
+  </section>
+
+  {% if people %}
+  <section class="panel">
+    <header class="panel-head"><h2>People by role</h2><a class="link-arrow" href="{{ url_for('workspace.people') }}">All people {{ icon('chevron-right') }}</a></header>
+    {% set top = people.by_role|map(attribute=1)|max if people.by_role else 1 %}
+    <ul class="bar-list">{% for label, n in people.by_role %}<li><span class="bar-label">{{ label }}</span><progress max="{{ top }}" value="{{ n }}">{{ n }}</progress><strong>{{ n }}</strong></li>{% endfor %}</ul>
+  </section>
+  {% elif usage is none %}
+  <section class="panel">
+    <header class="panel-head"><h2>Your details</h2></header>
+    <dl class="details">
+      <div><dt>Name</dt><dd translate="no">{{ current_user.full_name }}</dd></div>
+      <div><dt>Email</dt><dd translate="no">{{ current_user.email }}</dd></div>
+      <div><dt>Phone</dt><dd translate="no" class="nowrap">{{ current_user.phone or '—' }}</dd></div>
+    </dl>
+  </section>
+  {% endif %}
+</div>
+
+{% if recent %}
+<section class="panel">
+  <header class="panel-head"><h2>Recent activity</h2><a class="link-arrow" href="{{ url_for('workspace.activity') }}">All activity {{ icon('chevron-right') }}</a></header>
+  <ul class="activity">{% for e in recent %}<li><span class="activity-dot"></span><div><p><strong>{{ e.summary or e.action }}</strong></p><p class="muted small"><span translate="no">{{ e.actor_label }}</span> · <span class="nowrap">{{ e.created_at|date('%d %b %Y %H:%M') }}</span></p></div></li>{% endfor %}</ul>
+</section>
+{% endif %}
+{% endblock %}

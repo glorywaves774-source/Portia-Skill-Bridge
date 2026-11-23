@@ -1,0 +1,86 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ lesson.title }}{% endblock %}
+{% block page_title %}{{ lesson.title }}{% endblock %}
+{% block page_subtitle %}{{ lesson.kind_label }} · {{ c.title }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('courses.detail', public_id=c.public_id) }}">{{ icon('arrow-left') }} Course content</a></p>
+<div class="grid-2 lesson-edit">
+  {% if manage %}
+  <section class="panel">
+    <header class="panel-head"><h2>Edit lesson</h2></header>
+    <form method="post" class="stack" novalidate>
+      {{ form.hidden_tag() }}
+      {{ field(form.title) }}
+      {% if lesson.kind == 'video' %}{{ field(form.video_url, inputmode="url", placeholder="https://www.youtube.com/watch?v=…") }}{% endif %}
+      {{ field(form.body, hint="Blank line = new paragraph · ## Heading · - list item · **bold**") }}
+      <div class="form-grid">
+        {% if lesson.kind in ['text', 'video', 'files'] %}{{ field(form.duration_minutes, inputmode="numeric") }}{% endif %}
+        {% if lesson.is_assessed %}
+          {{ field(form.pass_mark, inputmode="numeric") }}{{ field(form.max_attempts, inputmode="numeric") }}
+          {% if lesson.kind == 'exam' %}{{ field(form.time_limit_minutes, inputmode="numeric") }}{% endif %}
+        {% endif %}
+        {% if lesson.kind == 'assignment' %}{{ field(form.due_date) }}{{ field(form.max_score, inputmode="numeric") }}{% endif %}
+      </div>
+      {% if lesson.is_assessed %}{{ checkbox(form.show_answers) }}{% endif %}
+      <button class="btn btn-primary" type="submit">{{ icon('check') }} Save lesson</button>
+    </form>
+  </section>
+  {% endif %}
+  <section class="panel lesson-preview">
+    <header class="panel-head"><h2>What learners see</h2></header>
+    {% include "learn/_lesson_body.html" %}
+  </section>
+</div>
+
+{% if lesson.kind == 'files' or (manage and lesson.kind in ['text', 'assignment']) %}
+<section class="panel">
+  <header class="panel-head"><h2>Files to download</h2></header>
+  {% if lesson.files %}
+  <ul class="doc-list">{% for lf in lesson.files %}<li><span class="doc-icon" aria-hidden="true">{{ icon('file-text') }}</span>
+    <div class="doc-meta"><a href="{{ url_for('courses.download_file', public_id=c.public_id, lesson_id=lesson.public_id, file_id=lf.public_id) }}">{{ lf.title }}</a><span class="muted small">{{ lf.file.extension }} · {{ lf.file.size_label }}</span></div>
+    {% if manage %}<form method="post" action="{{ url_for('courses.delete_file', public_id=c.public_id, lesson_id=lesson.public_id, file_id=lf.public_id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="Remove file">{{ icon('x') }}</button></form>{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">No files yet.</p>{% endif %}
+  {% if manage %}
+  <form method="post" action="{{ url_for('courses.add_file', public_id=c.public_id, lesson_id=lesson.public_id) }}" enctype="multipart/form-data" class="form-grid doc-upload" novalidate>
+    {{ file_form.hidden_tag() }}
+    {{ field(file_form.title, placeholder="e.g. Week 1 slides") }}
+    <div class="field"><label class="field-label" for="f-file">{{ file_form.file.label.text }}</label>{{ file_form.file(accept=".pdf,.docx,.pptx,.xlsx,.jpg,.jpeg,.png") }}</div>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('file-text') }} Upload</button></div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if lesson.is_assessed %}
+<section class="panel" id="questions">
+  <header class="panel-head"><h2>Questions</h2><span class="muted small">{{ lesson.questions|length }} · {{ lesson.total_points }} points</span></header>
+  {% if lesson.questions %}
+  <ol class="question-list">{% for q in lesson.questions %}
+    <li><div class="question-head"><strong>{{ q.prompt }}</strong><span class="muted small">{{ q.points }} pt{{ '' if q.points == 1 else 's' }}{% if q.multiple %} · several answers{% endif %}</span>
+      {% if manage %}<form method="post" action="{{ url_for('courses.delete_question', public_id=c.public_id, lesson_id=lesson.public_id, question_id=q.id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="Delete question">{{ icon('x') }}</button></form>{% endif %}</div>
+      <ul class="option-list">{% for o in q.options %}<li class="{{ 'is-correct' if o.is_correct and manage else '' }}">{% if manage and o.is_correct %}{{ icon('circle-check') }}<span class="visually-hidden">Correct: </span>{% endif %}{{ o.text }}</li>{% endfor %}</ul>
+      {% if q.explanation %}<p class="muted small">Explanation: {{ q.explanation }}</p>{% endif %}
+    </li>{% endfor %}</ol>
+  {% else %}<p class="empty muted">No questions yet.</p>{% endif %}
+  {% if manage %}
+  <form method="post" action="{{ url_for('courses.add_question', public_id=c.public_id, lesson_id=lesson.public_id) }}" class="stack question-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <h3>Add a question</h3>
+    <div class="field"><label class="field-label" for="prompt">Question</label><textarea id="prompt" name="prompt" maxlength="2000" required></textarea></div>
+    <fieldset class="role-picker"><legend class="field-label">Answers: tick every correct one</legend>
+      <div class="answer-grid">{% for i in range(1, 7) %}
+        <div class="answer-row"><label class="answer-ok"><input type="checkbox" name="ok{{ i }}" value="y"><span class="visually-hidden">Answer {{ i }} is correct</span></label>
+          <label class="visually-hidden" for="opt{{ i }}">Answer {{ i }}</label><input id="opt{{ i }}" type="text" name="opt{{ i }}" maxlength="500" placeholder="Answer {{ i }}{{ ' (optional)' if i > 2 else '' }}"></div>{% endfor %}</div>
+    </fieldset>
+    <div class="form-grid">
+      <div class="field"><label class="field-label" for="points">Points</label><input id="points" type="number" name="points" value="1" min="1" max="100" inputmode="numeric"></div>
+      <div class="field"><label class="field-label" for="explanation">Explanation (optional)</label><input id="explanation" type="text" name="explanation" maxlength="1000"></div>
+    </div>
+    <button class="btn btn-primary" type="submit">Add question</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}

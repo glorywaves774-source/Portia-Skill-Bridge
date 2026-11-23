@@ -1,0 +1,83 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% from "jobs/_macros.html" import job_badge %}
+{% block title %}{{ e.name }}{% endblock %}
+{% block page_title %}<span translate="no">{{ e.name }}</span>{% endblock %}
+{% block page_subtitle %}{{ e.sector_label }}{% if not e.is_active %} · Inactive{% endif %}{% endblock %}
+{% block page_tools %}{% if can('vacancies.manage') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('employers.edit', public_id=e.public_id) }}">{{ icon('settings') }} Edit</a>{% if e.is_active %}<a class="btn btn-primary btn-sm" href="{{ url_for('jobs.new', employer=e.public_id) }}">{{ icon('briefcase') }} Post a vacancy</a>{% endif %}{% endif %}{% endblock %}
+{% block content %}
+{% if not job_scope.restricted %}<p><a class="link-arrow back-link" href="{{ url_for('employers.index') }}">{{ icon('arrow-left') }} All employers</a></p>{% endif %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Details</h2>{% if not e.is_active %}<span class="badge">Inactive</span>{% endif %}</header>
+    <dl class="details">
+      <div><dt>Contact</dt><dd translate="no">{{ e.contact_name or '—' }}{% if e.contact_role %} <span class="muted">({{ e.contact_role }})</span>{% endif %}</dd></div>
+      <div><dt>Phone</dt><dd class="nowrap" translate="no">{% if e.phone %}<a href="tel:{{ e.phone|replace(' ', '') }}">{{ e.phone }}</a>{% else %}—{% endif %}</dd></div>
+      <div><dt>Email</dt><dd translate="no" class="break">{% if e.email %}<a href="mailto:{{ e.email }}">{{ e.email }}</a>{% else %}—{% endif %}</dd></div>
+      <div><dt>Website</dt><dd translate="no" class="break">{% if e.website %}<a href="{{ e.website }}" rel="noopener noreferrer" target="_blank">{{ e.website }}</a>{% else %}—{% endif %}</dd></div>
+      <div><dt>Place</dt><dd>{{ e.address ~ ', ' if e.address else '' }}{{ e.place }}</dd></div>
+    </dl>
+    {% if e.notes and not job_scope.restricted %}<p class="notes">{{ e.notes }}</p>{% endif %}
+    {% if can('vacancies.manage') and not job_scope.restricted %}
+    <form method="post" action="{{ url_for('employers.set_active', public_id=e.public_id) }}" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="active" value="{{ '0' if e.is_active else '1' }}">
+      <button class="btn btn-ghost btn-sm" type="submit">{{ icon('pause' if e.is_active else 'play') }} {{ 'Mark inactive' if e.is_active else 'Reactivate' }}</button>
+    </form>
+    {% endif %}
+  </section>
+  <section class="panel" id="team">
+    <header class="panel-head"><h2>Their team on SkillBridge</h2></header>
+    {% if team %}
+    <ul class="doc-list">{% for m in team %}<li><span class="avatar-initials" aria-hidden="true">{{ m.user.full_name[:1] }}</span>
+      <div class="doc-meta"><strong translate="no">{{ m.user.full_name }}</strong><span class="muted small" translate="no">{{ m.user.email }}{% if not m.is_active %} · deactivated{% endif %}</span></div>
+      {% if forms %}<form method="post" action="{{ url_for('employers.unlink', public_id=e.public_id, mid=m.id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="Unlink {{ m.user.full_name }}" title="Unlink">{{ icon('x') }}</button></form>{% endif %}
+    </li>{% endfor %}</ul>
+    {% else %}<p class="empty muted">Nobody from {{ e.name }} signs in yet.</p>{% endif %}
+    {% if forms %}
+    <p class="muted small">People linked here see only this employer's vacancies, the candidates you shortlist for them, and their placements. They don't see your learner records.</p>
+    <form method="post" action="{{ url_for('employers.invite', public_id=e.public_id) }}" class="stack" novalidate>
+      {{ forms.invite.hidden_tag() }}
+      <div class="form-grid">{{ field(forms.invite.email, autocomplete="off") }}{{ field(forms.invite.full_name, autocomplete="off") }}</div>
+      <button class="btn btn-primary" type="submit">{{ icon('mail') }} Invite to sign in</button>
+    </form>
+    {% if forms.link.member.choices|length > 1 %}
+    <form method="post" action="{{ url_for('employers.link', public_id=e.public_id) }}" class="toolbar link-form" novalidate>
+      {{ forms.link.hidden_tag() }}
+      <div class="field grow"><label class="field-label" for="ln-member">Or link someone who already has the Employer role</label>{{ forms.link.member() }}</div>
+      <button class="btn btn-ghost" type="submit">{{ icon('user-check') }} Link</button>
+    </form>{% endif %}
+    {% endif %}
+  </section>
+</div>
+
+<section class="panel">
+  <header class="panel-head"><h2>Vacancies</h2></header>
+  {% if vacancies %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Job</th><th>Code</th><th class="num">Positions</th><th class="num">Applicants</th><th>Closes</th><th>Status</th></tr></thead>
+    <tbody>{% for v in vacancies %}<tr>
+      <td class="wrap"><a href="{{ url_for('jobs.detail', public_id=v.public_id) }}"><strong>{{ v.title }}</strong></a><br><span class="muted small">{{ v.type_label }}</span></td>
+      <td class="nowrap mono">{{ v.code }}</td>
+      <td class="nowrap num">{{ v.hired_count }} / {{ v.positions }}</td>
+      <td class="nowrap num">{{ v.applications|length if not job_scope.restricted else v.applications|selectattr('shared_with_employer')|list|length }}</td>
+      <td class="nowrap">{{ v.closing_date|date }}</td>
+      <td class="nowrap">{{ job_badge(v) }}</td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No vacancies yet.</p>{% endif %}
+</section>
+
+<section class="panel">
+  <header class="panel-head"><h2>Learners in work here</h2></header>
+  {% if placements %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Person</th><th>Job</th><th>Started</th><th>Status</th></tr></thead>
+    <tbody>{% for p in placements %}<tr>
+      <td class="wrap"><a href="{{ url_for('placements.detail', public_id=p.public_id) }}" translate="no">{{ p.learner.full_name }}</a></td>
+      <td class="wrap">{{ p.job_title }}<br><span class="muted small">{{ p.type_label }}</span></td>
+      <td class="nowrap">{{ p.start_date|date }}</td>
+      <td class="nowrap"><span class="badge {{ 'badge-active' if p.is_active else '' }}">{{ p.status_label }}</span></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No placements with this employer yet.</p>{% endif %}
+</section>
+{% endblock %}

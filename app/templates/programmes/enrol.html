@@ -1,0 +1,27 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Enrol learners{% endblock %}
+{% block page_title %}Enrol learners{% endblock %}
+{% block page_subtitle %}{{ p.name }}{% if p.seats_left is not none %} · {{ p.seats_left }} seats left{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('programmes.detail', public_id=p.public_id, tab='learners') }}">{{ icon('arrow-left') }} Back to programme</a></p>
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Name, learner number or town"></div>
+    <button class="btn btn-ghost" type="submit">{{ icon('search') }} Search</button>
+  </form>
+  {% if candidates %}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="pick-head"><label class="check-all"><input type="checkbox" data-check-all="learner"> Select all shown ({{ candidates|length }})</label></div>
+    <ul class="pick-list">{% for l in candidates %}
+      <li><label>
+        <input type="checkbox" name="learner" value="{{ l.public_id }}">
+        {% if l.photo_file_id %}<img class="avatar-img" src="{{ url_for('learners.photo', public_id=l.public_id) }}" alt="" width="36" height="48" loading="lazy">{% else %}<span class="avatar-initials" aria-hidden="true">{{ l.initials }}</span>{% endif %}
+        <span class="pick-meta"><strong translate="no">{{ l.full_name }}</strong><span class="muted small"><span class="mono">{{ l.learner_no }}</span> · {{ l.gender_label }}{% if l.city %} · <span translate="no">{{ l.city }}</span>{% endif %}</span></span>
+      </label></li>{% endfor %}</ul>
+    <div class="form-actions sticky-actions"><button class="btn btn-primary" type="submit">{{ icon('user-plus') }} Enrol selected</button></div>
+  </form>
+  {% else %}<p class="empty muted">{% if q %}No learners match.{% else %}Everyone is already enrolled, or no learners are registered yet. <a href="{{ url_for('learners.new') }}">Register a learner</a>.{% endif %}</p>{% endif %}
+</section>
+{% endblock %}

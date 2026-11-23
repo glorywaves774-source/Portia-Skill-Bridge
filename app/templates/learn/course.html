@@ -1,0 +1,28 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ c.title }}{% endblock %}
+{% block page_title %}{{ c.title }}{% endblock %}
+{% block page_subtitle %}{{ ce.progress }}% complete{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('learn.home') }}">{{ icon('arrow-left') }} My learning</a></p>
+<section class="panel course-hero">
+  <div>
+    {% if c.summary %}<p>{{ c.summary }}</p>{% endif %}
+    <p class="muted small">{{ c.level_label }}{% if c.estimated_hours %} · about {{ c.estimated_hours }} hours{% endif %} · {{ c.lessons|length }} lessons</p>
+    <div class="progress-cell big"><progress max="100" value="{{ ce.progress }}"></progress><strong>{{ ce.progress }}%</strong></div>
+  </div>
+  {% if next_lesson %}<a class="btn btn-primary btn-lg" href="{{ url_for('learn.lesson', public_id=c.public_id, lesson_id=next_lesson.public_id) }}">{{ icon('play') }} {{ 'Continue' if done else 'Start the course' }}</a>
+  {% else %}<span class="badge badge-active big-badge">{{ icon('award') }} Course completed{% if ce.completed_at %} {{ ce.completed_at|date }}{% endif %}</span>{% endif %}
+</section>
+{% for m in c.modules %}{% if m.lessons %}
+<section class="panel">
+  <header class="panel-head"><h2>{{ m.title }}</h2><span class="muted small">{{ m.lessons|selectattr('id', 'in', done)|list|length }}/{{ m.lessons|length }}</span></header>
+  <ol class="lesson-list">{% for l in m.lessons %}
+    <li class="{{ 'is-done' if l.id in done else '' }}">
+      <span class="lesson-icon kind-{{ l.kind }}" aria-hidden="true">{{ icon('check' if l.id in done else l.icon) }}</span>
+      <div class="doc-meta"><a href="{{ url_for('learn.lesson', public_id=c.public_id, lesson_id=l.public_id) }}">{{ l.title }}</a>
+        <span class="muted small">{{ l.kind_label }}{% if l.duration_minutes %} · {{ l.duration_minutes }} min{% endif %}{% if l.time_limit_minutes %} · timed: {{ l.time_limit_minutes }} min{% endif %}{% if l.id in done %} · done{% endif %}</span></div>
+    </li>{% endfor %}</ol>
+</section>
+{% endif %}{% endfor %}
+{% endblock %}

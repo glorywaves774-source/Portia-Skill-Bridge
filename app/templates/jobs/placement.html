@@ -1,0 +1,58 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ p.learner.full_name }}: {{ p.job_title }}{% endblock %}
+{% block page_title %}<span translate="no">{{ p.learner.full_name }}</span>{% endblock %}
+{% block page_subtitle %}{{ p.job_title }} · <span translate="no">{{ p.employer_name }}</span>{% endblock %}
+{% block page_tools %}{% if can_view_learner %}<a class="btn btn-ghost btn-sm" href="{{ url_for('learners.profile', public_id=p.learner.public_id, tab='employment') }}">{{ icon('graduation-cap') }} Learner record</a>{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('placements.index') }}">{{ icon('arrow-left') }} Placements</a></p>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Placement</h2><span class="badge {{ 'badge-active' if p.is_active else '' }}">{{ p.status_label }}</span></header>
+    <dl class="details">
+      <div><dt>Employer</dt><dd translate="no">{% if p.employer %}<a href="{{ url_for('employers.detail', public_id=p.employer.public_id) }}">{{ p.employer_name }}</a>{% else %}{{ p.employer_name }}{% endif %}</dd></div>
+      <div><dt>Type</dt><dd>{{ p.type_label }}</dd></div>
+      <div><dt>Started</dt><dd class="nowrap">{{ p.start_date|date }}</dd></div>
+      {% if not p.is_active %}<div><dt>Ended</dt><dd>{{ p.end_date|date }}{% if p.end_reason %} · {{ p.end_reason }}{% endif %}</dd></div>{% endif %}
+      <div><dt>Monthly pay</dt><dd class="nowrap">{{ p.monthly_pay_minor|money }}</dd></div>
+      {% if p.vacancy %}<div><dt>Vacancy</dt><dd><a href="{{ url_for('jobs.detail', public_id=p.vacancy.public_id) }}">{{ p.vacancy.code }} {{ p.vacancy.title }}</a></dd></div>{% endif %}
+    </dl>
+    {% if p.notes %}<p class="notes">{{ p.notes }}</p>{% endif %}
+  </section>
+  {% if forms %}
+  <section class="panel">
+    <header class="panel-head"><h2>End the placement</h2></header>
+    <form method="post" action="{{ url_for('placements.end', public_id=p.public_id) }}" class="form-grid" novalidate>
+      {{ forms.end.hidden_tag() }}
+      {{ field(forms.end.end_date) }}{{ field(forms.end.reason, placeholder="e.g. Contract ended, moved away") }}
+      <div class="span-2 form-actions"><button class="btn btn-ghost" type="submit">End placement</button></div>
+    </form>
+    <p class="muted small">The job is closed in the learner's employment history. Checks after the last day are cancelled.</p>
+  </section>
+  {% endif %}
+</div>
+<section class="panel" id="follow-ups">
+  <header class="panel-head"><h2>Follow-up checks</h2></header>
+  {% if p.follow_ups %}
+  <ul class="follow-list">{% for fu in p.follow_ups %}<li class="{{ 'is-done' if fu.is_done else ('is-overdue' if fu.is_overdue(today) else '') }}">
+    <div class="follow-when"><strong>{{ fu.months }} months</strong><span class="muted small nowrap">due {{ fu.due_on|date }}</span></div>
+    <div class="follow-body">
+      {% if fu.is_done %}
+        <p><span class="badge {{ 'badge-active' if fu.still_employed else 'badge-past_due' }}">{{ 'Still in work' if fu.still_employed else 'No longer in work' }}</span>
+          {% if fu.monthly_pay_minor is not none %}<span class="nowrap">{{ fu.monthly_pay_minor|money }} a month</span>{% endif %}</p>
+        <p class="muted small">Checked {{ fu.done_on|date }}{% if fu.recorded_by %} by <span translate="no">{{ fu.recorded_by.full_name }}</span>{% endif %}{% if fu.notes %} · {{ fu.notes }}{% endif %}</p>
+      {% elif forms and next_fu and fu.id == next_fu.id %}
+        <form method="post" action="{{ url_for('placements.follow_up', public_id=p.public_id, fu_id=fu.id) }}" class="form-grid compact-grid" novalidate>
+          {{ forms.follow.hidden_tag() }}
+          {{ field(forms.follow.done_on) }}{{ field(forms.follow.still_employed) }}
+          {{ field(forms.follow.monthly_pay, inputmode="decimal") }}{{ field(forms.follow.notes) }}
+          <div class="span-2 form-actions"><button class="btn btn-primary btn-sm" type="submit">{{ icon('check') }} Record {{ fu.months }}-month check</button></div>
+        </form>
+      {% else %}<p class="muted small">{{ 'Overdue.' if fu.is_overdue(today) else 'Not done yet.' }}</p>{% endif %}
+    </div>
+  </li>{% endfor %}</ul>
+  <p class="muted small">If a check finds the person is no longer in this work, the placement ends on the date of the check.</p>
+  {% else %}<p class="empty muted">No checks are scheduled.</p>{% endif %}
+</section>
+{% endblock %}

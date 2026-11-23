@@ -1,0 +1,33 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Skills gaps{% endblock %}
+{% block page_title %}Skills-gap analysis{% endblock %}
+{% block page_subtitle %}How many learners are competent in each unit{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('assessments.index') }}">{{ icon('arrow-left') }} Assessments</a></p>
+<section class="panel">
+  <form class="toolbar" method="get">
+    <div class="field grow"><label class="field-label" for="framework">Framework</label><select id="framework" name="framework">{% for f in frameworks %}<option value="{{ f.public_id }}" {% if fw and fw.id == f.id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
+    <div class="field grow"><label class="field-label" for="programme">Learners</label><select id="programme" name="programme"><option value="">Everyone assessed on this framework</option>{% for p in programmes %}<option value="{{ p.public_id }}" {% if prog and prog.id == p.id %}selected{% endif %}>{{ p.code }} · {{ p.name }}</option>{% endfor %}</select></div>
+    <button class="btn btn-primary" type="submit">Show</button>
+  </form>
+</section>
+{% if not fw %}<section class="panel"><p class="muted">No active frameworks yet.</p></section>
+{% elif result %}
+<section class="kpi-grid">
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('users') }}</span><p class="kpi-label">Learners</p><p class="kpi-value">{{ result.learners }}</p><p class="kpi-note">{{ result.assessed }} assessed</p></article>
+  <article class="panel kpi tone-teal"><span class="kpi-icon">{{ icon('award') }}</span><p class="kpi-label">Fully competent</p><p class="kpi-value">{{ result.fully_competent }}</p><p class="kpi-note">in every unit</p></article>
+  <article class="panel kpi tone-amber"><span class="kpi-icon">{{ icon('circle-alert') }}</span><p class="kpi-label">Biggest gap</p><p class="kpi-value small-value">{{ result.weakest[0].competency.code if result.weakest else '—' }}</p><p class="kpi-note">{% if result.weakest %}{{ result.weakest[0].percent }}% competent{% else %}No results yet{% endif %}</p></article>
+</section>
+<section class="panel">
+  <header class="panel-head"><h2>By competency</h2></header>
+  <ul class="gap-list">{% for r in result.rows %}
+    <li class="{{ 'is-weak' if r.percent is not none and r.percent < 60 else '' }}">
+      <div class="usage-top"><span><span class="comp-code mono">{{ r.competency.code }}</span> {{ r.competency.title }}</span>
+        <span class="nowrap">{% if r.percent is not none %}<strong>{{ r.percent }}%</strong> <span class="muted small">({{ r.achieved }}/{{ r.assessed }} · avg {{ r.average }})</span>{% else %}<span class="muted">Not assessed</span>{% endif %}</span></div>
+      {% if r.percent is not none %}<progress max="100" value="{{ r.percent }}"></progress>{% endif %}
+    </li>{% endfor %}</ul>
+  <p class="muted small">Based on each learner's most recent finalised result per unit. Units where fewer than 60% are competent are highlighted; consider extra practice sessions for them.</p>
+</section>
+{% endif %}
+{% endblock %}

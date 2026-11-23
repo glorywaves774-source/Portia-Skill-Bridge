@@ -1,0 +1,36 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Backups{% endblock %}
+{% block page_title %}Backups{% endblock %}
+{% block page_subtitle %}Encrypted copies of the whole database{% endblock %}
+{% block page_tools %}{% if keyed or config.ENV_NAME != 'production' %}<form method="post" action="{{ url_for('admin.backup_now') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary btn-sm" type="submit">{{ icon('database-backup') }} Back up now</button></form>{% endif %}{% endblock %}
+{% block content %}
+{% if not keyed %}<div class="notice notice-warn">{{ icon('circle-alert') }}<span><strong>No encryption key.</strong> Set <span class="mono">BACKUP_ENCRYPTION_KEY</span> (make one with <span class="mono">flask backup make-key</span>) and keep a copy somewhere safe, away from this server. {% if config.ENV_NAME == 'production' %}Backups can't run without it.{% else %}Development backups are made without encryption.{% endif %}</span></div>{% endif %}
+{% if error %}<div class="notice notice-bad">{{ icon('circle-alert') }}<span>Can't read the backup folder: {{ error }}</span></div>{% endif %}
+<section class="panel">
+  <dl class="details">
+    <div><dt>Schedule</dt><dd>Every day by the <span class="mono">flask backup create</span> cron job</dd></div>
+    <div><dt>Kept for</dt><dd>{{ retention }} days (the newest 7 are always kept)</dd></div>
+    <div><dt>Last run</dt><dd>{% if run and run.last_finished_at %}{{ run.last_finished_at|date('%d %b %Y %H:%M') }} UTC · {{ 'OK' if run.last_ok else 'Failed: ' ~ run.last_result }}{% else %}Not yet{% endif %}</dd></div>
+  </dl>
+</section>
+<section class="panel">
+  <header class="panel-head"><h2>Saved backups</h2></header>
+  {% if files %}<div class="table-wrap"><table class="table">
+    <thead><tr><th>Backup</th><th>Made</th><th class="num">Size</th><th></th></tr></thead>
+    <tbody>{% for f in files %}{% set name = f.key.split('/')[-1] %}<tr>
+      <td class="nowrap mono">{{ name }}</td><td class="nowrap">{{ f.modified|date('%d %b %Y %H:%M') }}</td>
+      <td class="num nowrap">{{ f.size|filesize }}</td>
+      <td class="nowrap"><a class="btn btn-ghost btn-sm" href="{{ url_for('admin.backup_download', name=name) }}">{{ icon('download') }} Download</a></td></tr>{% endfor %}</tbody>
+  </table></div>{% else %}<p class="muted">No backups yet.</p>{% endif %}
+</section>
+<section class="panel">
+  <header class="panel-head"><h2>Restoring</h2></header>
+  <ol class="steps-list">
+    <li>Create a new, empty PostgreSQL database and point <span class="mono">DATABASE_URL</span> at it.</li>
+    <li>Run <span class="mono">flask db upgrade</span> with the same release that made the backup.</li>
+    <li>Set the same <span class="mono">BACKUP_ENCRYPTION_KEY</span>, then run <span class="mono">flask backup verify NAME</span> and <span class="mono">flask backup restore NAME</span>.</li>
+  </ol>
+  <p class="muted small">Downloads are still encrypted; they can only be opened with the key. Uploaded photos and documents are kept in the storage bucket, not in these backups: turn on versioning for the bucket.</p>
+</section>
+{% endblock %}

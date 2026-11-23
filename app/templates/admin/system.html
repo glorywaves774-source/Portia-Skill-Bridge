@@ -1,0 +1,13 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}System status{% endblock %}
+{% block page_title %}System status{% endblock %}
+{% block page_subtitle %}{% if bad %}{{ bad }} problem{{ 's' if bad != 1 }} to fix{% elif warn %}{{ warn }} thing{{ 's' if warn != 1 }} to check{% else %}Ready{% endif %} · version {{ app_version }}{% endblock %}
+{% block content %}
+<section class="panel">
+  <ul class="status-list">{% for c in checks %}
+    <li class="{{ c.state }}">{{ icon('circle-check' if c.state == 'ok' else 'circle-alert') }}<div><strong>{{ c.name }}</strong> <span class="visually-hidden">{{ {'ok': 'OK', 'warn': 'check', 'bad': 'problem'}[c.state] }}</span><p class="muted small">{{ c.detail }}</p></div></li>{% endfor %}
+  </ul>
+  <p class="muted small">The same checks run with <span class="mono">flask system check</span>. See <span class="mono">docs/GO-LIVE.md</span> for the full launch checklist.</p>
+</section>
+{% endblock %}

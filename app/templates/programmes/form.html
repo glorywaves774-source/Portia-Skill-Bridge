@@ -1,0 +1,21 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ 'Edit programme' if programme else 'New programme' }}{% endblock %}
+{% block page_title %}{{ 'Edit ' ~ programme.name if programme else 'New training programme' }}{% endblock %}
+{% block page_subtitle %}{% if programme %}<span class="mono">{{ programme.code }}</span>{% else %}A programme code is given automatically{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('programmes.detail', public_id=programme.public_id) if programme else url_for('programmes.index') }}">{{ icon('arrow-left') }} Back</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.name, cls="span-2", placeholder="e.g. Fashion Design & Garment Production, Cohort 3") }}
+    {{ field(form.trade, placeholder="e.g. Fashion design") }}{{ field(form.delivery_mode) }}
+    {{ field(form.start_date) }}{{ field(form.end_date) }}
+    {{ field(form.location) }}{{ field(form.capacity, inputmode="numeric") }}
+    {{ field(form.funder, cls="span-2", placeholder="e.g. Mastercard Foundation Young Africa Works") }}
+    {{ field(form.description, cls="span-2") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} {{ 'Save changes' if programme else 'Create programme' }}</button></div>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,155 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon, sub_badge, tenant_badge %}
+{% set sub = tenant.current_subscription %}
+{% block title %}{{ tenant.name }}{% endblock %}
+{% block page_title %}<span translate="no">{{ tenant.name }}</span>{% endblock %}
+{% block page_subtitle %}<span class="mono">{{ tenant.code }}</span> · {{ tenant.organization_type_label }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('admin.tenants') }}">{{ icon('arrow-left') }} All workspaces</a></p>
+
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Workspace</h2>{{ tenant_badge(tenant) }}</header>
+    <dl class="details">
+      <div><dt>Code</dt><dd class="mono">{{ tenant.code }}</dd></div>
+      <div><dt>Type</dt><dd>{{ tenant.organization_type_label }}</dd></div>
+      <div><dt>Email</dt><dd translate="no">{{ tenant.email or '—' }}</dd></div>
+      <div><dt>Phone</dt><dd translate="no" class="nowrap">{{ tenant.phone or '—' }}</dd></div>
+      <div><dt>Location</dt><dd translate="no">{{ [tenant.city, tenant.region, tenant.country]|select|join(', ') }}</dd></div>
+      <div><dt>Time zone</dt><dd>{{ tenant.timezone }}</dd></div>
+      <div><dt>Created</dt><dd class="nowrap">{{ tenant.created_at|date }}</dd></div>
+      <div><dt>Can be used</dt><dd>{{ 'Yes' if tenant.has_access else 'No' }}</dd></div>
+      {% if tenant.suspension_reason %}<div><dt>Suspended because</dt><dd translate="no">{{ tenant.suspension_reason }}</dd></div>{% endif %}
+    </dl>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head"><h2>Subscription</h2>{{ sub_badge(sub) }}</header>
+    {% if sub %}
+    <dl class="details">
+      <div><dt>Plan</dt><dd>{{ sub.plan.name }}</dd></div>
+      <div><dt>Billing</dt><dd>{{ sub.billing_cycle|capitalize }}</dd></div>
+      <div><dt>Price</dt><dd class="nowrap">{% if sub.plan.is_custom_pricing %}Custom{% else %}{{ sub.price_minor|money(sub.currency) }}{% endif %}</dd></div>
+      {% if sub.trial_ends_at %}<div><dt>Trial ends</dt><dd class="nowrap">{{ sub.trial_ends_at|date }}</dd></div>{% endif %}
+      <div><dt>Current period</dt><dd class="nowrap">{{ sub.current_period_start|date }} – {{ sub.current_period_end|date }}</dd></div>
+      <div><dt>Days left</dt><dd>{{ sub.days_remaining() }}</dd></div>
+      <div><dt>Auto-renew</dt><dd>{{ 'Yes' if sub.auto_renew else 'No' }}</dd></div>
+    </dl>
+    {% else %}<p class="empty muted">No subscription.</p>{% endif %}
+  </section>
+</div>
+
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Plan usage</h2></header>
+    <ul class="usage-list">
+      {% for row in usage %}
+      <li>
+        <div class="usage-top"><span>{{ row.resource|replace('_mb', '')|replace('_', ' ')|capitalize }}</span>
+          <span class="muted nowrap">{% if row.used is none %}Tracked from a later stage{% else %}{{ row.used }} of {{ row.limit|limit }}{% endif %}</span></div>
+        {% if row.used is not none and row.limit %}<progress max="{{ row.limit }}" value="{{ row.used }}"></progress>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <section class="panel">
+    <header class="panel-head"><h2>Workspace status</h2></header>
+    {% if tenant.status == 'active' %}
+    <form method="post" action="{{ url_for('admin.tenant_status', code=tenant.code) }}" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="suspend">
+      <label class="field">
+        <span class="field-label">Reason for suspension</span>
+        <input type="text" name="reason" required maxlength="255" placeholder="e.g. Unpaid invoice, policy breach">
+      </label>
+      <p class="muted small">Suspending blocks everyone in this workspace. Their records are kept.</p>
+      <button class="btn btn-danger" type="submit">{{ icon('pause') }} Suspend workspace</button>
+    </form>
+    {% elif tenant.status == 'suspended' %}
+    <form method="post" action="{{ url_for('admin.tenant_status', code=tenant.code) }}" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="reactivate">
+      <p class="muted">Suspended {{ tenant.suspended_at|date }}.</p>
+      <button class="btn btn-primary" type="submit">{{ icon('play') }} Reactivate workspace</button>
+    </form>
+    {% else %}<p class="muted">This workspace is closed.</p>{% endif %}
+  </section>
+</div>
+
+<section class="panel">
+  <header class="panel-head"><h2>Manage subscription</h2></header>
+  <form method="post" action="{{ url_for('admin.tenant_subscription', code=tenant.code) }}" class="form-grid" novalidate>
+    {{ sub_form.hidden_tag() }}
+    <div class="field span-2"><label class="field-label" for="action">What do you want to do?</label>{{ sub_form.action() }}</div>
+    <div class="field"><label class="field-label" for="plan">Plan <span class="muted small">(change plan / start)</span></label>{{ sub_form.plan() }}</div>
+    <div class="field"><label class="field-label" for="billing_cycle">Billing <span class="muted small">(activate / start)</span></label>{{ sub_form.billing_cycle() }}</div>
+    <div class="field"><label class="field-label" for="days">Days <span class="muted small">(extend trial)</span></label>{{ sub_form.days(inputmode="numeric") }}</div>
+    <div class="field"><label class="field-label" for="reference">Payment reference <span class="muted small">(activate / renew)</span></label>{{ sub_form.reference(placeholder="e.g. MoMo 0123456789 or bank slip") }}</div>
+    <div class="field span-2"><label class="field-label" for="note">Note <span class="muted small">(cancel)</span></label>{{ sub_form.note() }}</div>
+    <p class="span-2 muted small">For trials, cancellations and corrections. To record money received outside Paystack, use <strong>Record a payment</strong> below so the workspace gets a receipt. Every change is recorded in the audit log.</p>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Apply</button></div>
+  </form>
+</section>
+
+<section class="panel">
+  <header class="panel-head"><h2>Record a payment</h2></header>
+  <form method="post" action="{{ url_for('admin.tenant_payment', code=tenant.code) }}" class="form-grid" novalidate>
+    {{ pay_form.hidden_tag() }}
+    <div class="field"><label class="field-label" for="pay-plan">Plan</label>{{ pay_form.plan() }}</div>
+    <div class="field"><label class="field-label" for="pay-billing_cycle">Billing</label>{{ pay_form.billing_cycle() }}</div>
+    <div class="field"><label class="field-label" for="pay-amount">Amount received (GHS)</label>{{ pay_form.amount(inputmode="decimal") }}</div>
+    <div class="field"><label class="field-label" for="pay-method">Paid by</label>{{ pay_form.method() }}</div>
+    <div class="field span-2"><label class="field-label" for="pay-reference">Reference</label>{{ pay_form.reference(placeholder="Bank slip, transfer or MoMo transaction number") }}</div>
+    <p class="span-2 muted small">For bank transfers, cheques or cash. This starts or extends the paid period like an online payment and gives the workspace a receipt.</p>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Record payment</button></div>
+  </form>
+  {% if invoices %}<h3 class="sub-head">Invoices</h3>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Invoice</th><th>For</th><th>Date</th><th class="num">Amount</th><th>Status</th></tr></thead>
+    <tbody>{% for inv in invoices %}<tr><td class="nowrap mono">{{ inv.number }}</td><td class="wrap">{{ inv.description }}{% if inv.provider == 'manual' %} <span class="muted small">· recorded</span>{% endif %}</td><td class="nowrap">{{ (inv.paid_at or inv.created_at)|date }}</td><td class="num nowrap">{{ inv.amount_minor|money(inv.currency) }}</td><td class="nowrap"><span class="badge badge-inv-{{ inv.status }}">{{ inv.status_label }}</span></td></tr>{% endfor %}</tbody>
+  </table></div>{% endif %}
+</section>
+
+{% if invitations %}
+<section class="panel">
+  <header class="panel-head"><h2>Invitations</h2></header>
+  <ul class="invite-list">
+    {% for inv in invitations %}
+    <li>
+      <div class="invite-meta"><strong translate="no">{{ inv.email }}</strong>
+        <span class="muted small">{{ inv.roles|map('role_label')|join(', ') }}{% if inv.make_owner %} · owner{% endif %} · {{ inv.status_label }}{% if inv.is_pending %} until {{ inv.expires_at|date('%d %b') }}{% endif %}</span></div>
+      {% if not inv.accepted_at and not inv.revoked_at %}
+      <form method="post" action="{{ url_for('admin.resend_invitation', public_id=inv.public_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm" type="submit">Send again</button></form>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="panel">
+  <header class="panel-head"><h2>People</h2><span class="muted small">{{ members|length }}</span></header>
+  {% if members %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Owner</th></tr></thead>
+      <tbody>{% for m in members %}
+        <tr><td class="wrap"><a href="{{ url_for('admin.user_detail', public_id=m.user.public_id) }}" translate="no">{{ m.user.full_name }}</a></td><td class="nowrap" translate="no">{{ m.user.email }}</td><td class="nowrap">{{ m.role_label }}</td><td>{{ 'Yes' if m.is_owner else '' }}</td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty muted">No people yet. Invitations are listed above.</p>{% endif %}
+</section>
+
+<section class="panel">
+  <header class="panel-head"><h2>Activity</h2></header>
+  {% if events %}
+  <ul class="activity">
+    {% for e in events %}
+    <li><span class="activity-dot"></span><div><p><strong>{{ e.action }}</strong></p><p class="muted small">{% if e.summary %}<span translate="no">{{ e.summary }}</span> · {% endif %}<span class="nowrap">{{ e.created_at|date('%d %b %Y %H:%M') }}</span> · {{ e.actor_label }}</p></div></li>
+    {% endfor %}
+  </ul>
+  {% else %}<p class="empty muted">No activity yet.</p>{% endif %}
+</section>
+{% endblock %}

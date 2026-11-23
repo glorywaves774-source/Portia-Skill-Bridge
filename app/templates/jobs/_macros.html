@@ -1,0 +1,13 @@
+{% from "partials/_macros.html" import icon %}
+{% macro app_badge(a) -%}<span class="badge badge-app-{{ a.status }}">{{ a.status_label }}</span>{%- endmacro %}
+{% macro job_badge(v) -%}<span class="badge badge-job-{{ v.status }}">{{ v.status_label }}</span>{%- endmacro %}
+{% macro fit_pill(score) -%}
+{% if score is none %}<span class="fit fit-none" title="This vacancy has no requirements to match against">—</span>
+{% else %}<span class="fit {{ 'fit-high' if score >= 75 else ('fit-mid' if score >= 40 else 'fit-low') }}" title="Fit with the vacancy">{{ score }}%</span>{% endif %}
+{%- endmacro %}
+{% macro fit_reasons(fit) -%}
+<ul class="fit-reasons">{% for label, ok in fit.parts %}<li class="{{ 'is-ok' if ok else 'is-gap' }}">{{ icon('circle-check' if ok else 'circle-alert') }}<span>{{ label }}</span></li>{% endfor %}</ul>
+{%- endmacro %}
+{% macro pay(v) -%}
+{% if v.salary_min_minor is not none and v.salary_max_minor is not none %}{{ v.salary_min_minor|money }} – {{ v.salary_max_minor|money }} a month{% elif v.salary_min_minor is not none %}From {{ v.salary_min_minor|money }} a month{% elif v.salary_max_minor is not none %}Up to {{ v.salary_max_minor|money }} a month{% else %}Not stated{% endif %}
+{%- endmacro %}

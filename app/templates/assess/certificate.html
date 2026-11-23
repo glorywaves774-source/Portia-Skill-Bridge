@@ -1,0 +1,39 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Certificate {{ cert.number }}{% endblock %}
+{% block page_title %}{{ cert.title }}{% endblock %}
+{% block page_subtitle %}<span class="mono">{{ cert.number }}</span> · {{ cert.status_label }}{% endblock %}
+{% block page_tools %}<a class="btn btn-primary btn-sm" href="{{ url_for('certificates.pdf', public_id=cert.public_id) }}" target="_blank" rel="noopener">{{ icon('file-text') }} PDF</a>{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('certificates.index') }}">{{ icon('arrow-left') }} All certificates</a></p>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>{{ cert.kind_label }}</h2><span class="badge {{ 'badge-active' if cert.status_label == 'Valid' else 'badge-suspended' }}">{{ cert.status_label }}</span></header>
+    <dl class="details">
+      <div><dt>Awarded to</dt><dd translate="no">{% if can('learners.view') %}<a href="{{ url_for('learners.profile', public_id=cert.learner.public_id, tab='competencies') }}">{{ cert.learner.full_name }}</a>{% else %}{{ cert.learner.full_name }}{% endif %}</dd></div>
+      <div><dt>Number</dt><dd class="mono">{{ cert.number }}</dd></div>
+      <div><dt>Verification code</dt><dd class="mono">{{ cert.verification_code }}</dd></div>
+      <div><dt>Issued</dt><dd class="nowrap">{{ cert.issued_on|date }}{% if cert.issued_by %} by <span translate="no">{{ cert.issued_by.full_name }}</span>{% endif %}</dd></div>
+      {% if cert.expires_on %}<div><dt>Valid until</dt><dd class="nowrap">{{ cert.expires_on|date }}</dd></div>{% endif %}
+      {% if cert.signatory_name %}<div><dt>Signed by</dt><dd translate="no">{{ cert.signatory_name }}{% if cert.signatory_title %}, {{ cert.signatory_title }}{% endif %}</dd></div>{% endif %}
+      {% if cert.is_revoked %}<div><dt>Revoked</dt><dd>{{ cert.revoked_at|date }}: {{ cert.revoked_reason }}</dd></div>{% endif %}
+    </dl>
+    {% if competencies %}<h3 class="sub-head">Competencies</h3><ul class="criteria">{% for c in competencies %}<li>{{ c }}</li>{% endfor %}</ul>{% endif %}
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Verification</h2></header>
+    <p class="muted small">Employers can confirm this certificate at the link below, by scanning the QR code on the PDF, or by entering the code on the verification page.</p>
+    <p class="verify-link mono">{{ verify_url }}</p>
+    <a class="btn btn-ghost btn-sm" href="{{ verify_url }}" target="_blank" rel="noopener">{{ icon('shield-check') }} Open verification page</a>
+    {% if not cert.is_revoked %}
+    <form method="post" action="{{ url_for('certificates.revoke', public_id=cert.public_id) }}" class="stack revoke-form" novalidate>
+      {{ revoke_form.hidden_tag() }}
+      {{ field(revoke_form.reason, placeholder="e.g. Issued in error") }}
+      <button class="btn btn-danger" type="submit">{{ icon('x') }} Revoke certificate</button>
+      <p class="muted small">Revoking can't be undone. The verification page will show the certificate as revoked.</p>
+    </form>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

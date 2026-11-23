@@ -1,0 +1,27 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Set up two-step sign-in{% endblock %}
+{% block page_title %}Set up two-step sign-in{% endblock %}
+{% block page_subtitle %}Takes about a minute{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('account.profile') }}">{{ icon('arrow-left') }} My account</a></p>
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>1. Scan this code</h2></header>
+    <p>Open your authenticator app, choose <strong>Add account</strong> or <strong>+</strong>, and scan the code.</p>
+    <div class="qr-box keep-light" title="QR codes stay on white so phones can read them"><img src="{{ qr }}" alt="QR code to add {{ app_name }} to your authenticator app"></div>
+    <p class="muted small">Can't scan? Enter this key in the app instead:<br><span class="mono" translate="no">{{ secret }}</span></p>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>2. Enter the code it shows</h2></header>
+    {% if error %}<div class="flash flash-error" role="alert">{{ icon('circle-alert') }}<span>{{ error }}</span></div>{% endif %}
+    <form method="post" action="{{ url_for('account.two_step_setup') }}" class="stack" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="field"><label class="field-label" for="code">6-digit code</label>
+        <input id="code" name="code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required placeholder="123456"></div>
+      <button class="btn btn-primary" type="submit">{{ icon('shield-check') }} Turn on</button>
+    </form>
+    <p class="muted small">Next you'll get recovery codes for when you don't have your phone.</p>
+  </section>
+</div>
+{% endblock %}

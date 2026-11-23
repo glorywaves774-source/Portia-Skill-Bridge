@@ -1,0 +1,82 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon, sub_badge %}
+{% block title %}Subscription{% endblock %}
+{% block page_title %}Subscription{% endblock %}
+{% block page_subtitle %}Your plan, payments and usage{% endblock %}
+{% block page_tools %}{% if can('billing.view') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('billing.invoices') }}">{{ icon('file-text') }} Invoices</a>{% endif %}{% endblock %}
+{% block content %}
+{% set manage = can('billing.manage') %}
+{% if test_mode and manage %}<div class="notice notice-info">{{ icon('info') }}<span><strong>Practice payments.</strong> Online payment is in test mode, so no real money moves.</span></div>{% endif %}
+{% if live and live.status == 'past_due' %}
+<div class="notice notice-warn">{{ icon('circle-alert') }}<div><strong>Payment due.</strong> <span>Your workspace keeps working until {{ live.grace_ends_at()|date }}.{% if manage %} Pay now to avoid any interruption.{% endif %}</span></div></div>
+{% elif not ws.has_access %}
+<div class="notice notice-bad">{{ icon('circle-alert') }}<div><strong>Your subscription has ended.</strong> <span>Choose a plan below to start again. Your records are kept safe.</span></div></div>
+{% endif %}
+
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2 translate="no">{{ sub.plan.name if sub else 'No plan' }}</h2>{{ sub_badge(sub) }}</header>
+    {% if sub %}
+    <dl class="details">
+      <div><dt>Billing</dt><dd>{{ 'Yearly' if sub.billing_cycle == 'annual' else 'Monthly' }}</dd></div>
+      <div><dt>Price</dt><dd class="nowrap">{% if sub.plan.is_custom_pricing %}Agreed separately{% elif sub.plan.is_free %}Free{% else %}{{ sub.plan.price_minor(sub.billing_cycle)|money(sub.currency) }} / {{ 'year' if sub.billing_cycle == 'annual' else 'month' }}{% endif %}</dd></div>
+      {% if sub.is_trial %}<div><dt>Trial ends</dt><dd class="nowrap">{{ sub.trial_ends_at|date }}</dd></div>
+      {% else %}<div><dt>Paid until</dt><dd class="nowrap">{{ sub.current_period_end|date }}</dd></div>{% endif %}
+      {% if live and not live.plan.is_free and not live.is_trial %}<div><dt>Renews automatically</dt><dd>{% if live.auto_renew and not live.cancel_at_period_end %}{% if method %}Yes, with {{ method.label }}{% else %}Yes, we'll email you to pay{% endif %}{% else %}No, ends {{ live.current_period_end|date }}{% endif %}</dd></div>{% endif %}
+    </dl>
+    {% endif %}
+    {% if live and live.scheduled_plan %}
+    <div class="notice notice-info small">{{ icon('calendar') }}<div><span>Moves to <strong>{{ live.scheduled_plan.name }}</strong> ({{ 'yearly' if live.scheduled_cycle == 'annual' else 'monthly' }}) on {{ live.current_period_end|date }}.</span>
+      {% if manage %}<form method="post" action="{{ url_for('billing.cancel_change') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="link-button" type="submit">Keep {{ live.plan.name }}</button></form>{% endif %}</div></div>
+    {% endif %}
+    {% if manage and sub and not sub.plan.is_custom_pricing and not sub.plan.is_free and live is not none and live.status != 'suspended' %}
+    <div class="action-row">
+      {% if online %}<a class="btn btn-primary" href="{{ url_for('billing.checkout', plan=sub.plan.code, cycle=sub.billing_cycle) }}">{{ icon('credit-card') }} {{ 'Pay now' if sub.status in ('trialing', 'past_due') else 'Pay for another ' ~ ('year' if sub.billing_cycle == 'annual' else 'month') }}</a>{% endif %}
+      {% if live.status == 'active' %}<form method="post" action="{{ url_for('billing.auto_renew') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="on" value="{{ '0' if live.auto_renew and not live.cancel_at_period_end else '1' }}"><button class="btn btn-ghost" type="submit">{{ 'Turn off automatic renewal' if live.auto_renew and not live.cancel_at_period_end else 'Turn automatic renewal back on' }}</button></form>{% endif %}
+    </div>
+    {% endif %}
+    {% if manage and method %}
+    <div class="saved-card"><span class="doc-icon">{{ icon('credit-card') }}</span><div class="doc-meta"><strong>{{ method.label }}</strong><span class="muted small">{% if method.expiry %}Expires {{ method.expiry }} · {% endif %}used for automatic renewals</span></div>
+      <form method="post" action="{{ url_for('billing.remove_card', public_id=method.public_id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm" type="submit">Remove</button></form></div>
+    {% endif %}
+    {% if not online and manage %}<p class="muted small">Online payment isn't switched on for this site yet. To pay, contact {{ app_developer }}.</p>{% endif %}
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Usage</h2></header>
+    <ul class="usage-list">
+      {% for row in usage %}
+      <li>
+        <div class="usage-top"><span>{{ row.resource|replace('_mb', '')|replace('_', ' ')|capitalize }}</span>
+          <span class="muted nowrap">{% if row.used is none %}Limit {{ row.limit|limit }}{% else %}{{ row.used }} of {{ row.limit|limit }}{% endif %}</span></div>
+        {% if row.used is not none and row.limit %}<progress max="{{ row.limit }}" value="{{ row.used }}"></progress>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+
+<section class="panel">
+  <header class="panel-head"><h2>Plans</h2>{% if manage and online %}<span class="muted small">Pay with Mobile Money or a card</span>{% endif %}</header>
+  <div class="plan-grid">{% for p in plans %}{% set current = sub and sub.plan_id == p.id and live %}
+    <article class="plan-option{{ ' is-current' if current }}">
+      <header><h3 translate="no">{{ p.name }}</h3>{% if current %}<span class="badge badge-active">Your plan</span>{% elif p.is_featured %}<span class="badge">Popular</span>{% endif %}</header>
+      <p class="plan-price">{% if p.is_custom_pricing %}Custom{% elif p.is_free %}Free{% else %}{{ p.monthly_price_minor|money(p.currency) }}<span class="muted small"> / month</span>{% endif %}</p>
+      {% if not p.is_free and not p.is_custom_pricing %}<p class="muted small">or {{ p.annual_price_minor|money(p.currency) }} a year{% if p.annual_saving_minor %} (save {{ p.annual_saving_minor|money(p.currency) }}){% endif %}</p>{% endif %}
+      <ul class="plan-limits muted small">
+        {% if g.workspace.kind == 'organization' %}<li>{{ p.max_learners|limit }} learners · {{ p.max_staff|limit }} staff</li>{% endif %}
+        <li>{{ p.max_courses|limit }} courses</li>
+      </ul>
+      {% if manage %}{% if p.is_custom_pricing %}<a class="btn btn-ghost btn-sm btn-block" href="{{ url_for('public.pricing') }}">Talk to sales</a>
+      {% elif current and sub.billing_cycle == 'monthly' and not p.is_free %}<a class="btn btn-ghost btn-sm btn-block" href="{{ url_for('billing.checkout', plan=p.code, cycle='annual') }}">Switch to yearly</a>
+      {% elif not current %}<a class="btn btn-ghost btn-sm btn-block" href="{{ url_for('billing.checkout', plan=p.code, cycle=sub.billing_cycle if sub else 'monthly') }}">Choose {{ p.name }}</a>{% endif %}{% endif %}
+    </article>{% endfor %}
+  </div>
+</section>
+
+{% if invoices %}
+<section class="panel">
+  <header class="panel-head"><h2>Recent payments</h2><a class="link-arrow" href="{{ url_for('billing.invoices') }}">All invoices {{ icon('chevron-right') }}</a></header>
+  {% include "billing/_invoice_table.html" %}
+</section>
+{% endif %}
+{% endblock %}

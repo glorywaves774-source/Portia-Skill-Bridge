@@ -1,0 +1,78 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon, sub_badge, tenant_badge %}
+{% block title %}Platform overview{% endblock %}
+{% block page_title %}Platform overview{% endblock %}
+{% block page_subtitle %}Workspaces, subscriptions and recent activity{% endblock %}
+{% block content %}
+<section class="kpi-grid" aria-label="Key figures">
+  {% for ic, label, value, note, tone in [
+    ("building-2", "Workspaces", stats.tenants, stats.organizations ~ " organizations · " ~ stats.individuals ~ " individuals", "blue"),
+    ("circle-check", "Active subscriptions", stats.active_subs, "Paid or free plans in good standing", "teal"),
+    ("hourglass", "On free trial", stats.trials, "Trials convert after payment", "blue"),
+    ("circle-alert", "Payment due", stats.past_due, "Inside the grace period", "amber"),
+    ("credit-card", "Monthly recurring revenue", stats.mrr_minor|money, "From active paid subscriptions", "teal"),
+    ("pause", "Suspended workspaces", stats.suspended, "Blocked by an administrator", "red"),
+  ] %}
+  <article class="panel kpi tone-{{ tone }}">
+    <span class="kpi-icon">{{ icon(ic) }}</span>
+    <p class="kpi-label">{{ label }}</p>
+    <p class="kpi-value nowrap">{{ value }}</p>
+    <p class="kpi-note">{{ note }}</p>
+  </article>
+  {% endfor %}
+</section>
+
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Live subscriptions by plan</h2><a class="link-arrow" href="{{ url_for('admin.plans') }}">Plans {{ icon('chevron-right') }}</a></header>
+    {% if by_plan %}
+    {% set top = by_plan|map(attribute=1)|max %}
+    <ul class="bar-list">
+      {% for name, count in by_plan %}
+      <li><span class="bar-label">{{ name }}</span><progress max="{{ top }}" value="{{ count }}">{{ count }}</progress><strong>{{ count }}</strong></li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="empty muted">No subscriptions yet. Create a workspace with <code>flask create-tenant</code>.</p>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <header class="panel-head"><h2>Recent activity</h2><a class="link-arrow" href="{{ url_for('admin.audit_log') }}">Audit log {{ icon('chevron-right') }}</a></header>
+    {% if recent_events %}
+    <ul class="activity">
+      {% for e in recent_events %}
+      <li>
+        <span class="activity-dot"></span>
+        <div><p><strong>{{ e.action }}</strong>{% if e.tenant %} · <span translate="no">{{ e.tenant.name }}</span>{% endif %}</p>
+        <p class="muted small">{% if e.summary %}<span translate="no">{{ e.summary }}</span> · {% endif %}<span class="nowrap">{{ e.created_at|date('%d %b %Y %H:%M') }}</span></p></div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="empty muted">No activity recorded yet.</p>{% endif %}
+  </section>
+</div>
+
+<section class="panel">
+  <header class="panel-head"><h2>Newest workspaces</h2><a class="link-arrow" href="{{ url_for('admin.tenants') }}">All workspaces {{ icon('chevron-right') }}</a></header>
+  {% if recent_tenants %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Workspace</th><th>Code</th><th>Type</th><th>Plan</th><th>Subscription</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for t in recent_tenants %}{% set sub = t.current_subscription %}
+        <tr>
+          <td class="wrap"><a href="{{ url_for('admin.tenant_detail', code=t.code) }}" translate="no">{{ t.name }}</a></td>
+          <td class="nowrap mono">{{ t.code }}</td>
+          <td class="nowrap">{{ t.organization_type_label }}</td>
+          <td class="nowrap">{{ sub.plan.name if sub else '—' }}</td>
+          <td class="nowrap">{{ sub_badge(sub) }}</td>
+          <td class="nowrap">{{ tenant_badge(t) }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}<p class="empty muted">No workspaces yet.</p>{% endif %}
+</section>
+{% endblock %}

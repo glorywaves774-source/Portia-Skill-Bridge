@@ -1,0 +1,54 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Learners{% endblock %}
+{% block page_title %}Learners &amp; beneficiaries{% endblock %}
+{% block page_subtitle %}{{ total }} found{% if usage.limit %} · {{ usage.used }} of {{ usage.limit }} on your plan{% endif %}{% endblock %}
+{% block page_tools %}
+{% if can('learners.view') and can('reports.export') %}<a class="btn btn-ghost btn-sm" href="{{ url_for('learners.export', **args) }}">{{ icon('file-text') }} Export CSV</a>{% endif %}
+{% if can('learners.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('learners.new') }}">{{ icon('user-plus') }} Register</a>{% endif %}
+{% endblock %}
+{% block content %}
+<section class="panel">
+  <form class="toolbar filters" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ args.q or '' }}" placeholder="Name, learner number, phone or email"></div>
+    <div class="field"><label class="visually-hidden" for="status">Status</label><select id="status" name="status"><option value="">Current (not archived)</option>{% for k, v in statuses.items() %}<option value="{{ k }}" {% if args.status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}<option value="all" {% if args.status == 'all' %}selected{% endif %}>All, including archived</option></select></div>
+    <div class="field"><label class="visually-hidden" for="gender">Gender</label><select id="gender" name="gender"><option value="">Any gender</option>{% for k, v in genders.items() %}<option value="{{ k }}" {% if args.gender == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+    <div class="field"><label class="visually-hidden" for="region">Region</label><select id="region" name="region"><option value="">Any region</option>{% for r in regions %}<option {% if args.region == r %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    <div class="field"><label class="visually-hidden" for="category">Category</label><select id="category" name="category"><option value="">Any category</option>{% for k, v in categories.items() %}<option value="{{ k }}" {% if args.category == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+    <div class="field"><label class="visually-hidden" for="disability">Disability</label><select id="disability" name="disability"><option value="">Disability: any</option><option value="yes" {% if args.disability == 'yes' %}selected{% endif %}>With a disability</option></select></div>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Filter</button>
+  </form>
+  {% if learners %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Learner</th><th>Number</th><th>Gender</th><th class="num">Age</th><th>Region</th><th>Phone</th><th>Status</th></tr></thead>
+      <tbody>{% for l in learners %}
+        <tr>
+          <td class="wrap"><a class="person-cell" href="{{ url_for('learners.profile', public_id=l.public_id) }}">
+            {% if l.photo_file_id %}<img class="avatar-img" src="{{ url_for('learners.photo', public_id=l.public_id) }}" alt="" width="36" height="48" loading="lazy">{% else %}<span class="avatar-initials" aria-hidden="true">{{ l.initials }}</span>{% endif %}
+            <span translate="no">{{ l.full_name }}</span></a></td>
+          <td class="nowrap mono">{{ l.learner_no }}</td>
+          <td class="nowrap">{{ l.gender_label }}</td>
+          <td class="nowrap num">{{ l.age() or '—' }}</td>
+          <td class="nowrap">{{ l.region or '—' }}</td>
+          <td class="nowrap" translate="no">{{ l.phone or '—' }}</td>
+          <td class="nowrap"><span class="badge badge-learner-{{ l.status }}">{{ l.status_label }}</span></td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  {% if pages > 1 %}
+  <nav class="pager" aria-label="Pages">
+    {% if page > 1 %}<a class="btn btn-ghost btn-sm" href="{{ url_for('learners.index', page=page - 1, **args) }}">{{ icon('arrow-left') }} Previous</a>{% endif %}
+    <span class="muted small">Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a class="btn btn-ghost btn-sm" href="{{ url_for('learners.index', page=page + 1, **args) }}">Next {{ icon('arrow-right') }}</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <div class="empty-state center">
+    <p class="muted">{% if args %}No learners match these filters.{% else %}No learners registered yet.{% endif %}</p>
+    {% if not args and can('learners.manage') %}<a class="btn btn-primary" href="{{ url_for('learners.new') }}">{{ icon('user-plus') }} Register the first learner</a>{% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

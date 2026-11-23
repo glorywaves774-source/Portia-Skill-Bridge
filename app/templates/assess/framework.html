@@ -1,0 +1,58 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ fw.name }}{% endblock %}
+{% block page_title %}{{ fw.name }}{% endblock %}
+{% block page_subtitle %}{{ fw.status_label }}{% if fw.level %} · {{ fw.level }}{% endif %} · {{ fw.competencies|length }} competenc{{ 'y' if fw.competencies|length == 1 else 'ies' }}{% endblock %}
+{% block page_tools %}{% if fw.is_active and can('assessments.conduct') and can('learners.view') %}<a class="btn btn-primary btn-sm" href="{{ url_for('assessments.new') }}">{{ icon('clipboard-check') }} Assess a learner</a>{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('frameworks.index') }}">{{ icon('arrow-left') }} All frameworks</a></p>
+{% if manage and fw.status == 'draft' %}<div class="notice notice-info">{{ icon('info') }}<div><strong>Draft.</strong> <span class="muted">Add the competencies, then set the status to Active so assessors can use it.</span></div></div>{% endif %}
+<section class="panel" id="competencies">
+  <header class="panel-head"><h2>Competencies</h2><span class="muted small">Rated 1–4 · {{ levels[3] }} = 3</span></header>
+  {% if fw.competencies %}
+  <ol class="comp-list">{% for c in fw.competencies %}
+    <li>
+      <div class="comp-head"><span class="comp-code mono">{{ c.code }}</span><strong>{{ c.title }}</strong>
+        <span class="muted small">needs level {{ c.required_level }}</span>
+        {% if manage %}<span class="row-actions"><a class="btn btn-ghost btn-sm" href="{{ url_for('frameworks.edit_competency', public_id=fw.public_id, comp_id=c.id) }}">Edit</a>
+          <form method="post" action="{{ url_for('frameworks.delete_competency', public_id=fw.public_id, comp_id=c.id) }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="Delete competency">{{ icon('x') }}</button></form></span>{% endif %}
+      </div>
+      {% if c.description %}<p class="muted small">{{ c.description }}</p>{% endif %}
+      {% if c.criteria %}<ul class="criteria">{% for cr in c.criteria %}<li>{{ cr }}</li>{% endfor %}</ul>{% endif %}
+    </li>{% endfor %}</ol>
+  {% else %}<p class="empty muted">No competencies yet.</p>{% endif %}
+  {% if manage %}
+  <form method="post" action="{{ url_for('frameworks.add_competency', public_id=fw.public_id) }}" class="form-grid add-comp" novalidate>
+    {{ comp_form.hidden_tag() }}
+    <h3 class="span-2">Add a competency (unit)</h3>
+    {{ field(comp_form.code, placeholder="e.g. GC-01") }}{{ field(comp_form.required_level) }}
+    {{ field(comp_form.title, cls="span-2", placeholder="e.g. Take body measurements") }}
+    {{ field(comp_form.criteria, cls="span-2", placeholder="Measures are taken with the client standing naturally\nAll 12 standard measurements are recorded\nMeasurements are within 0.5 cm of the assessor's check") }}
+    {{ field(comp_form.description, cls="span-2") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">Add competency</button></div>
+  </form>
+  {% endif %}
+</section>
+{% if manage %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Details</h2></header>
+    <form method="post" class="stack" novalidate>
+      {{ form.hidden_tag() }}
+      {{ field(form.name) }}<div class="form-grid">{{ field(form.trade) }}{{ field(form.level) }}</div>{{ field(form.description) }}
+      <button class="btn btn-primary" type="submit">{{ icon('check') }} Save</button>
+    </form>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Status</h2><span class="badge badge-fw-{{ fw.status }}">{{ fw.status_label }}</span></header>
+    <form method="post" action="{{ url_for('frameworks.status', public_id=fw.public_id) }}" class="toolbar">
+      {{ status_form.hidden_tag() }}
+      <div class="field grow"><label class="visually-hidden" for="st-status">Status</label>{{ status_form.status() }}</div>
+      <button class="btn btn-primary" type="submit">Update</button>
+    </form>
+    <p class="muted small">Only active frameworks can be used for new assessments. Retire a framework when the standard changes. Past results stay on learners' records.{% if in_use %} Learners have already been assessed against this framework, so assessed competencies can't be deleted.{% endif %}</p>
+  </section>
+</div>
+{% elif fw.description %}<section class="panel"><p>{{ fw.description }}</p></section>{% endif %}
+{% endblock %}

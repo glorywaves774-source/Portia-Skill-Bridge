@@ -1,0 +1,96 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% from "jobs/_macros.html" import app_badge, fit_pill, fit_reasons %}
+{% set l = a.learner %}
+{% block title %}{{ l.full_name }}: {{ v.title }}{% endblock %}
+{% block page_title %}<span translate="no">{{ l.full_name }}</span>{% endblock %}
+{% block page_subtitle %}{{ v.title }} · <span translate="no">{{ v.employer.name }}</span>{% endblock %}
+{% block page_tools %}{% if can_view_learner %}<a class="btn btn-ghost btn-sm" href="{{ url_for('learners.profile', public_id=l.public_id) }}">{{ icon('graduation-cap') }} Learner record</a>{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('jobs.detail', public_id=v.public_id, tab='applicants') }}">{{ icon('arrow-left') }} All applicants for {{ v.code }}</a></p>
+<section class="panel result-banner app-banner">
+  <span class="result-icon fit-icon">{{ fit_pill(fit.score) }}</span>
+  <div><p><strong>{{ a.status_label }}</strong> · {{ 'Applied' if a.source == 'applied' else 'Put forward by the centre' }} on {{ a.created_at|date }}</p>
+    {% if a.interview_at and a.status in ('interview', 'offered') %}<p class="muted">Interview {{ a.interview_at|date('%A %d %b %Y, %H:%M') }}{% if a.interview_location %} at {{ a.interview_location }}{% endif %}</p>{% endif %}
+    {% if a.status == 'hired' and a.placement %}<p class="muted"><a href="{{ url_for('placements.detail', public_id=a.placement.public_id) }}">See the placement and follow-ups</a></p>{% endif %}</div>
+  {{ app_badge(a) }}
+</section>
+
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Candidate</h2></header>
+    <dl class="details">
+      <div><dt>Learner number</dt><dd class="mono">{{ l.learner_no }}</dd></div>
+      <div><dt>Region</dt><dd>{{ l.region or '—' }}</dd></div>
+      <div><dt>Education</dt><dd>{{ {'none': 'No formal education', 'primary': 'Primary', 'jhs': 'Junior High (JHS)', 'shs': 'Senior High (SHS)', 'tvet': 'TVET certificate', 'diploma': 'Diploma / HND', 'degree': "Bachelor's degree", 'postgraduate': 'Postgraduate'}.get(l.education_level, '—') }}</dd></div>
+      {% if show_contact %}
+      <div><dt>Phone</dt><dd class="nowrap" translate="no">{% if l.phone %}<a href="tel:{{ l.phone|replace(' ', '') }}">{{ l.phone }}</a>{% else %}—{% endif %}</dd></div>
+      <div><dt>Email</dt><dd translate="no" class="break">{% if l.email %}<a href="mailto:{{ l.email }}">{{ l.email }}</a>{% else %}—{% endif %}</dd></div>
+      {% endif %}
+    </dl>
+    <h3 class="sub-head">Fit with this job</h3>
+    {{ fit_reasons(fit) if fit.parts else '<p class="muted small">This vacancy has no trade, region or competencies to match against.</p>'|safe }}
+    {% if a.cover_note %}<h3 class="sub-head">In their words</h3><p class="notes">{{ a.cover_note }}</p>{% endif %}
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Skills and certificates</h2></header>
+    {% if certificates %}
+    <ul class="doc-list">{% for c in certificates %}<li><span class="doc-icon" aria-hidden="true">{{ icon('award') }}</span>
+      <div class="doc-meta"><strong>{{ c.title }}</strong><span class="muted small">{{ c.kind_label }} · {{ c.issued_on|date }} · <a href="{{ url_for('verify.check', code=c.verification_code) }}" target="_blank" rel="noopener">verify {{ c.verification_code }}</a></span></div></li>{% endfor %}</ul>
+    {% endif %}
+    {% for fw, rows in profiles %}
+    <h3 class="sub-head">{{ fw.name }} <span class="muted small">{{ rows|selectattr('achieved')|list|length }}/{{ rows|length }} competent</span></h3>
+    <ul class="skill-chips">{% for r in rows %}<li class="{{ 'is-ok' if r.achieved else ('is-gap' if r.level else 'is-none') }}" title="{{ r.competency.title }}"><span class="mono">{{ r.competency.code }}</span> {{ r.competency.title }}</li>{% endfor %}</ul>
+    {% endfor %}
+    {% if l.skills %}<h3 class="sub-head">Other skills</h3><ul class="skill-chips">{% for s in l.skills %}<li class="is-none">{{ s.name }} · {{ s.level_label }}{% if s.certified %} ✓{% endif %}</li>{% endfor %}</ul>{% endif %}
+    {% if not certificates and not profiles and not l.skills %}<p class="empty muted">No assessed skills or certificates yet.</p>{% endif %}
+  </section>
+</div>
+
+{% if forms %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Move to a stage</h2></header>
+    <form method="post" action="{{ url_for('jobs.application_status', public_id=a.public_id) }}" class="toolbar" novalidate>
+      {{ forms.status.hidden_tag() }}
+      <div class="field grow"><label class="field-label" for="ap-status">Stage</label>{{ forms.status.status() }}</div>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+    {% if not job_scope.restricted %}<p class="muted small">Shortlisting shares the candidate, with their phone and email, with {{ v.employer.name }}'s team.</p>{% endif %}
+    {% if a.is_open %}
+    <h3 class="sub-head">Interview</h3>
+    <form method="post" action="{{ url_for('jobs.interview', public_id=a.public_id) }}" class="form-grid" novalidate>
+      {{ forms.interview.hidden_tag() }}
+      {{ field(forms.interview.when) }}{{ field(forms.interview.location, placeholder="e.g. Kaneshie workshop") }}
+      <div class="span-2 form-actions"><button class="btn btn-ghost" type="submit">{{ icon('calendar-check') }} {{ 'Change interview' if a.interview_at else 'Set interview' }}</button></div>
+    </form>
+    <p class="muted small">The learner is emailed the time and place if they have an email address.</p>
+    {% endif %}
+  </section>
+  {% if a.is_open %}
+  <section class="panel">
+    <header class="panel-head"><h2>Hire</h2></header>
+    <form method="post" action="{{ url_for('jobs.hire', public_id=a.public_id) }}" class="form-grid" novalidate>
+      {{ forms.hire.hidden_tag() }}
+      {{ field(forms.hire.job_title, cls="span-2") }}
+      {{ field(forms.hire.employment_type) }}{{ field(forms.hire.start_date) }}
+      {{ field(forms.hire.monthly_pay, inputmode="decimal") }}<div></div>
+      <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('handshake') }} Record hire</button></div>
+    </form>
+    <p class="muted small">This records the placement, adds the job to the learner's employment history and schedules checks at 3, 6 and 12 months.</p>
+  </section>
+  {% endif %}
+</div>
+{% endif %}
+{% if notes_form %}
+<section class="panel">
+  <header class="panel-head"><h2>Notes</h2></header>
+  <form method="post" action="{{ url_for('jobs.notes', public_id=a.public_id) }}" class="stack" novalidate>
+    {{ notes_form.hidden_tag() }}
+    {{ field(notes_form.notes, hint="Shared between the centre and " ~ v.employer.name ~ "'s team." if not job_scope.restricted else "Shared with the training centre.") }}
+    <div class="form-actions"><button class="btn btn-ghost" type="submit">{{ icon('check') }} Save notes</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

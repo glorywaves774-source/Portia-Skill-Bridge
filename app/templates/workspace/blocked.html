@@ -1,0 +1,19 @@
+{% extends "layouts/auth.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Workspace unavailable{% endblock %}
+{% block content %}
+<span class="auth-icon">{{ icon('pause') }}</span>
+{% if reason == 'suspended' %}
+<h1>This workspace is suspended</h1>
+<p class="muted"><span translate="no">{{ g.workspace.name }}</span> has been paused by the {{ app_name }} team. Records are kept safely. Please contact {{ app_developer }} to restore access.</p>
+{% else %}
+<h1>The subscription has ended</h1>
+<p class="muted">The plan for <span translate="no">{{ g.workspace.name }}</span> is no longer active, so its pages are paused. Records are kept safely.</p>
+{% if can('billing.view') %}<a class="btn btn-primary btn-block" href="{{ url_for('workspace.subscription') }}">See plan and renew</a>{% else %}<p class="muted">Ask your workspace administrator to renew it.</p>{% endif %}
+{% endif %}
+{% if g.workspace_count > 1 %}<a class="btn btn-ghost btn-block" href="{{ url_for('auth.choose_workspace') }}">Switch workspace</a>{% endif %}
+<form method="post" action="{{ url_for('auth.signout') }}" class="auth-switch">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <button type="submit" class="link-button">Sign out</button>
+</form>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ 'Edit ' ~ learner.full_name if learner else 'Register a learner' }}{% endblock %}
+{% block page_title %}{% if learner %}Edit <span translate="no">{{ learner.full_name }}</span>{% else %}Register a learner{% endif %}{% endblock %}
+{% block page_subtitle %}{% if learner %}<span class="mono">{{ learner.learner_no }}</span>{% else %}A learner number is given automatically{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('learners.profile', public_id=learner.public_id) if learner else url_for('learners.index') }}">{{ icon('arrow-left') }} {{ 'Back to profile' if learner else 'All learners' }}</a></p>
+{% if duplicates %}
+<div class="notice notice-warn" role="alert">{{ icon('circle-alert') }}<div>
+  <strong>This person may already be registered.</strong>
+  <ul class="dup-list">{% for d in duplicates %}<li><a href="{{ url_for('learners.profile', public_id=d.public_id) }}" translate="no">{{ d.full_name }}</a> · <span class="mono">{{ d.learner_no }}</span>{% if d.date_of_birth %} · born {{ d.date_of_birth|date }}{% endif %}</li>{% endfor %}</ul>
+  <span class="muted">If this is a different person, press <strong>Register</strong> again to continue.</span></div></div>
+{% endif %}
+<form method="post" novalidate>
+  {{ form.hidden_tag() }}
+  <section class="panel">
+    <header class="panel-head"><h2>Personal details</h2></header>
+    <div class="form-grid">
+      {{ field(form.first_name, autocomplete="off") }}{{ field(form.middle_name, autocomplete="off") }}
+      {{ field(form.last_name, autocomplete="off") }}{{ field(form.gender) }}
+      {{ field(form.date_of_birth) }}{{ field(form.nationality) }}
+      {{ field(form.id_type) }}{{ field(form.id_number, placeholder="e.g. GHA-123456789-0", autocomplete="off") }}
+    </div>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Contact</h2></header>
+    <div class="form-grid">
+      {{ field(form.phone, inputmode="tel", placeholder="+233 …", autocomplete="off") }}{{ field(form.alt_phone, inputmode="tel", autocomplete="off") }}
+      {{ field(form.email, inputmode="email", autocomplete="off") }}{{ field(form.address, autocomplete="off") }}
+      {{ field(form.city) }}{{ field(form.district) }}
+      {{ field(form.region) }}<div></div>
+      {{ field(form.emergency_name, autocomplete="off") }}{{ field(form.emergency_phone, inputmode="tel", autocomplete="off") }}
+      {{ field(form.emergency_relation) }}
+    </div>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Background (for monitoring and evaluation)</h2></header>
+    <div class="form-grid">
+      {{ field(form.education_level) }}{{ field(form.employment_status) }}
+      <div class="span-2">{{ checkbox(form.has_disability) }}</div>
+      {{ field(form.disability_details, cls="span-2") }}
+      <fieldset class="role-picker span-2"><legend class="field-label">Beneficiary categories</legend>{{ form.categories(class_="check-grid") }}</fieldset>
+      {{ field(form.registered_on) }}<div></div>
+      {{ field(form.notes, cls="span-2") }}
+    </div>
+  </section>
+  <div class="form-actions sticky-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} {{ 'Save changes' if learner else 'Register' }}</button></div>
+</form>
+{% endblock %}

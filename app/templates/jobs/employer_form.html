@@ -1,0 +1,21 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ 'Edit employer' if employer else 'Add employer' }}{% endblock %}
+{% block page_title %}{{ 'Edit ' ~ employer.name if employer else 'Add an employer' }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('employers.detail', public_id=employer.public_id) if employer else url_for('employers.index') }}">{{ icon('arrow-left') }} Back</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.name, cls="span-2", placeholder="e.g. Kente Couture Ltd") }}
+    {{ field(form.sector) }}{{ field(form.website, placeholder="https://", inputmode="url") }}
+    {{ field(form.contact_name) }}{{ field(form.contact_role, placeholder="e.g. HR Manager") }}
+    {{ field(form.phone, placeholder="+233 24 123 4567", inputmode="tel", autocomplete="off") }}{{ field(form.email, autocomplete="off") }}
+    {{ field(form.region) }}{{ field(form.city) }}
+    {{ field(form.address, cls="span-2") }}
+    {{ field(form.notes, cls="span-2", hint="Only your team sees these notes.") }}
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} {{ 'Save changes' if employer else 'Add employer' }}</button></div>
+  </form>
+</section>
+{% endblock %}

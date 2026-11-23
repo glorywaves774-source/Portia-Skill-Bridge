@@ -1,0 +1,125 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ p.name }}{% endblock %}
+{% block page_title %}{{ p.name }}{% endblock %}
+{% block page_subtitle %}<span class="mono">{{ p.code }}</span> · {{ p.status_label }}{% endblock %}
+{% block page_tools %}{% if manage %}<a class="btn btn-primary btn-sm" href="{{ url_for('programmes.edit', public_id=p.public_id) }}">{{ icon('settings') }} Edit</a>{% endif %}{% endblock %}
+{% macro del_btn(url, label="Remove") -%}
+<form method="post" action="{{ url }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn-icon btn-icon-sm" type="submit" aria-label="{{ label }}" title="{{ label }}">{{ icon('x') }}</button></form>
+{%- endmacro %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('programmes.index') }}">{{ icon('arrow-left') }} All programmes</a></p>
+<section class="kpi-grid">
+  <article class="panel kpi tone-teal"><span class="kpi-icon">{{ icon('users') }}</span><p class="kpi-label">Learners</p><p class="kpi-value">{{ p.active_enrolments|length }}{% if p.capacity %}<span class="kpi-of"> / {{ p.capacity }}</span>{% endif %}</p><p class="kpi-note">{% if p.seats_left is not none %}{{ p.seats_left }} seats left{% else %}No capacity limit{% endif %}</p></article>
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('clipboard-check') }}</span><p class="kpi-label">Attendance</p><p class="kpi-value">{{ (overall ~ '%') if overall is not none else '—' }}</p><p class="kpi-note">{{ p.sessions|length }} session{{ '' if p.sessions|length == 1 else 's' }}</p></article>
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('award') }}</span><p class="kpi-label">Completed</p><p class="kpi-value">{{ p.enrolments|selectattr('status', 'equalto', 'completed')|list|length }}</p><p class="kpi-note">{{ p.enrolments|selectattr('status', 'equalto', 'dropped_out')|list|length }} dropped out</p></article>
+</section>
+
+<nav class="tabs" aria-label="Programme">
+  {% for t in tabs %}<a href="{{ url_for('programmes.detail', public_id=p.public_id, tab=t) }}" class="{% if tab == t %}is-active{% endif %}" {% if tab == t %}aria-current="page"{% endif %}>{{ {'overview': 'Overview', 'learners': 'Learners', 'sessions': 'Sessions & attendance', 'courses': 'Courses'}[t] }}</a>{% endfor %}
+</nav>
+
+{% if tab == 'overview' %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Details</h2><span class="badge badge-prog-{{ p.status }}">{{ p.status_label }}</span></header>
+    <dl class="details">
+      <div><dt>Trade</dt><dd>{{ p.trade or '—' }}</dd></div>
+      <div><dt>Delivery</dt><dd>{{ p.mode_label }}</dd></div>
+      <div><dt>Dates</dt><dd class="nowrap">{{ p.start_date|date }} – {{ p.end_date|date }}</dd></div>
+      <div><dt>Location</dt><dd>{{ p.location or '—' }}</dd></div>
+      <div><dt>Funder</dt><dd>{{ p.funder or '—' }}</dd></div>
+    </dl>
+    {% if p.description %}<p class="notes">{{ p.description }}</p>{% endif %}
+    {% if manage %}
+    <form method="post" action="{{ url_for('programmes.status', public_id=p.public_id) }}" class="toolbar status-form">
+      {{ forms.status.hidden_tag() }}
+      <div class="field grow"><label class="field-label" for="st-status">Status</label>{{ forms.status.status() }}</div>
+      <button class="btn btn-primary" type="submit">Update</button>
+    </form>
+    {% endif %}
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Trainers</h2></header>
+    {% if p.trainers %}
+    <ul class="doc-list">{% for t in p.trainers|sort(attribute='is_lead', reverse=True) %}
+      <li><span class="avatar-initials" aria-hidden="true">{{ t.user.full_name[:1] }}</span>
+        <div class="doc-meta"><strong translate="no">{{ t.user.full_name }}</strong><span class="muted small">{{ 'Lead trainer' if t.is_lead else 'Trainer' }}</span></div>
+        {% if manage %}{{ del_btn(url_for('programmes.remove_trainer', public_id=p.public_id, trainer_id=t.id)) }}{% endif %}</li>
+    {% endfor %}</ul>
+    {% else %}<p class="empty muted">No trainers assigned yet.</p>{% endif %}
+    {% if manage %}
+    <form method="post" action="{{ url_for('programmes.add_trainer', public_id=p.public_id) }}" class="stack trainer-form" novalidate>
+      {{ forms.trainer.hidden_tag() }}
+      {{ field(forms.trainer.user) }}
+      {{ checkbox(forms.trainer.lead) }}
+      <button class="btn btn-ghost" type="submit">{{ icon('user-plus') }} Assign trainer</button>
+    </form>
+    {% endif %}
+  </section>
+</div>
+
+{% elif tab == 'learners' %}
+<section class="panel">
+  <header class="panel-head"><h2>Enrolled learners</h2>{% if manage and can('learners.view') %}<a class="btn btn-primary btn-sm" href="{{ url_for('programmes.enrol', public_id=p.public_id) }}">{{ icon('user-plus') }} Enrol learners</a>{% endif %}</header>
+  {% if p.enrolments %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Learner</th><th>Number</th><th>Enrolled</th><th class="num">Attendance</th><th>Status</th></tr></thead>
+    <tbody>{% for e in p.enrolments|sort(attribute='learner.last_name') %}{% set r = rates.get(e.learner_id) %}<tr>
+      <td class="wrap">{% if can('learners.view') %}<a href="{{ url_for('learners.profile', public_id=e.learner.public_id, tab='training') }}" translate="no">{{ e.learner.full_name }}</a>{% else %}<span translate="no">{{ e.learner.full_name }}</span>{% endif %}</td>
+      <td class="nowrap mono">{{ e.learner.learner_no }}</td>
+      <td class="nowrap">{{ e.enrolled_on|date }}</td>
+      <td class="nowrap num">{% if r and r.rate is not none %}<span class="rate {{ 'rate-low' if r.rate < 75 else '' }}">{{ r.rate }}%</span> <span class="muted small">({{ r.attended }}/{{ r.recorded }})</span>{% else %}—{% endif %}</td>
+      <td class="nowrap">{% if manage %}
+        <form method="post" action="{{ url_for('programmes.enrolment_status', public_id=p.public_id, enrolment_id=e.id) }}" class="inline-select">
+          <input type="hidden" name="en-csrf_token" value="{{ csrf_token() }}">
+          <label class="visually-hidden" for="en-{{ e.id }}">Status</label>
+          <select id="en-{{ e.id }}" name="en-status" class="auto-submit">{% for k, v in enrolment_labels.items() %}<option value="{{ k }}" {% if e.status == k %}selected{% endif %}>{{ v }}</option>{% endfor %}</select>
+          <noscript><button class="btn btn-ghost btn-sm" type="submit">Save</button></noscript>
+        </form>{% else %}<span class="badge">{{ e.status_label }}</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody></table></div>
+  <p class="muted small table-foot">Attendance below 75% is highlighted.</p>
+  {% else %}<p class="empty muted">Nobody enrolled yet.</p>{% endif %}
+</section>
+
+{% elif tab == 'sessions' %}
+<section class="panel">
+  <header class="panel-head"><h2>Sessions</h2></header>
+  {% if p.sessions %}
+  <ul class="session-list">{% for s in p.sessions %}{% set n = s.attendance|length %}{% set present = s.attendance|selectattr('status', 'in', ['present', 'late'])|list|length %}
+    <li>
+      <div class="session-date"><strong>{{ s.date|date('%d') }}</strong><span>{{ s.date|date('%b') }}</span></div>
+      <div class="doc-meta"><strong>{{ s.title }}</strong>
+        <span class="muted small">{{ s.date|date('%A') }}{% if s.start_time %} · {{ s.start_time.strftime('%H:%M') }}{% if s.end_time %}–{{ s.end_time.strftime('%H:%M') }}{% endif %}{% endif %}{% if s.venue %} · {{ s.venue }}{% endif %}{% if s.trainer %} · <span translate="no">{{ s.trainer.full_name }}</span>{% endif %}</span>
+        <span class="small">{% if n %}<span class="badge badge-active">{{ present }}/{{ n }} present</span>{% else %}<span class="badge">Not taken</span>{% endif %}</span></div>
+      <div class="session-actions">
+        {% if can_attend %}<a class="btn btn-ghost btn-sm" href="{{ url_for('programmes.attendance', public_id=p.public_id, session_id=s.public_id) }}">{{ icon('clipboard-check') }} {{ 'Edit register' if n else 'Take register' }}</a>{% endif %}
+        {% if manage %}{{ del_btn(url_for('programmes.delete_session', public_id=p.public_id, session_id=s.public_id), 'Delete session') }}{% endif %}
+      </div>
+    </li>{% endfor %}</ul>
+  {% else %}<p class="empty muted">No sessions scheduled yet.</p>{% endif %}
+</section>
+{% if manage %}
+<section class="panel"><header class="panel-head"><h2>Add a session</h2></header>
+  <form method="post" action="{{ url_for('programmes.add_session', public_id=p.public_id) }}" class="form-grid" novalidate>
+    {{ forms.session.hidden_tag() }}
+    {{ field(forms.session.title, cls="span-2", placeholder="e.g. Week 1: Measuring and pattern drafting") }}
+    {{ field(forms.session.date) }}{{ field(forms.session.venue) }}
+    {{ field(forms.session.start_time) }}{{ field(forms.session.end_time) }}
+    {{ field(forms.session.trainer) }}<div></div>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">Add session</button></div>
+  </form></section>
+{% endif %}
+
+{% else %}
+<section class="panel">
+  <header class="panel-head"><h2>Online courses for this programme</h2>{% if can('courses.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('courses.new', programme=p.public_id) }}">{{ icon('graduation-cap') }} New course</a>{% endif %}</header>
+  {% if p.courses %}
+  <ul class="doc-list">{% for c in p.courses %}<li><span class="doc-icon" aria-hidden="true">{{ icon('graduation-cap') }}</span>
+    <div class="doc-meta">{% if can('courses.view') %}<a href="{{ url_for('courses.detail', public_id=c.public_id) }}">{{ c.title }}</a>{% else %}<strong>{{ c.title }}</strong>{% endif %}<span class="muted small">{{ c.status_label }} · {{ c.lessons|length }} lessons · {{ c.enrolments|length }} learners</span></div></li>{% endfor %}</ul>
+  <p class="muted small">Everyone enrolled in this programme is enrolled in its published courses automatically.</p>
+  {% else %}<p class="empty muted">No online courses linked yet.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Assessments{% endblock %}
+{% block page_title %}Skills assessments{% endblock %}
+{% block page_subtitle %}{{ assessments|length }} shown{% endblock %}
+{% block page_tools %}
+<a class="btn btn-ghost btn-sm" href="{{ url_for('assessments.gaps') }}">{{ icon('chart-column') }} Skills gaps</a>
+{% if can('assessments.conduct') and can('learners.view') %}<a class="btn btn-primary btn-sm" href="{{ url_for('assessments.new') }}">{{ icon('clipboard-check') }} New assessment</a>{% endif %}
+{% endblock %}
+{% block content %}
+<section class="panel">
+  <form class="toolbar" method="get">
+    <div class="field"><label class="visually-hidden" for="status">Status</label><select id="status" name="status"><option value="">Any status</option><option value="draft" {% if status == 'draft' %}selected{% endif %}>In progress</option><option value="final" {% if status == 'final' %}selected{% endif %}>Finalised</option></select></div>
+    <div class="field"><label class="visually-hidden" for="framework">Framework</label><select id="framework" name="framework"><option value="">Any framework</option>{% for f in frameworks %}<option value="{{ f.public_id }}" {% if fw and fw.id == f.id %}selected{% endif %}>{{ f.name }}</option>{% endfor %}</select></div>
+    <label class="check-all"><input type="checkbox" name="mine" value="1" {% if mine %}checked{% endif %}> Only mine</label>
+    <button class="btn btn-ghost" type="submit">Filter</button>
+  </form>
+  {% if assessments %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Learner</th><th>Framework</th><th>Type</th><th>Date</th><th>Assessor</th><th>Result</th></tr></thead>
+    <tbody>{% for a in assessments %}<tr>
+      <td class="wrap"><a href="{{ url_for('assessments.detail', public_id=a.public_id) }}" translate="no">{{ a.learner.full_name }}</a><br><span class="muted small mono">{{ a.learner.learner_no }}</span></td>
+      <td class="wrap">{{ a.framework.name }}</td><td class="nowrap">{{ a.kind_label }}</td>
+      <td class="nowrap">{{ a.assessed_on|date }}</td><td class="nowrap" translate="no">{{ a.assessor.full_name if a.assessor else '—' }}</td>
+      <td class="nowrap"><span class="badge {{ 'badge-active' if a.competent else ('badge-past_due' if a.is_final else 'badge-trialing') }}">{{ a.result_label }}</span></td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">No assessments yet.</p>{% endif %}
+</section>
+{% endblock %}

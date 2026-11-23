@@ -1,0 +1,104 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% from "jobs/_macros.html" import app_badge, job_badge, fit_pill, pay %}
+{% block title %}{{ v.title }}{% endblock %}
+{% block page_title %}{{ v.title }}{% endblock %}
+{% block page_subtitle %}<span class="mono">{{ v.code }}</span> · <span translate="no">{{ v.employer.name }}</span>{% endblock %}
+{% block page_tools %}{% if can('vacancies.manage') %}<a class="btn btn-primary btn-sm" href="{{ url_for('jobs.edit', public_id=v.public_id) }}">{{ icon('settings') }} Edit</a>{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('jobs.index') }}">{{ icon('arrow-left') }} All jobs</a></p>
+<section class="kpi-grid">
+  <article class="panel kpi tone-teal"><span class="kpi-icon">{{ icon('users') }}</span><p class="kpi-label">Applicants</p><p class="kpi-value">{{ apps|length }}</p><p class="kpi-note">{{ apps|selectattr('is_open')|list|length }} still in progress</p></article>
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('calendar-check') }}</span><p class="kpi-label">Interviews</p><p class="kpi-value">{{ apps|selectattr('status', 'equalto', 'interview')|list|length }}</p><p class="kpi-note">{{ apps|selectattr('status', 'equalto', 'offered')|list|length }} offer{{ '' if apps|selectattr('status', 'equalto', 'offered')|list|length == 1 else 's' }} made</p></article>
+  <article class="panel kpi tone-blue"><span class="kpi-icon">{{ icon('handshake') }}</span><p class="kpi-label">Hired</p><p class="kpi-value">{{ v.hired_count }}<span class="kpi-of"> / {{ v.positions }}</span></p><p class="kpi-note">{{ job_badge(v) }}</p></article>
+</section>
+
+<nav class="tabs" aria-label="Vacancy">
+  {% for t in tabs %}<a href="{{ url_for('jobs.detail', public_id=v.public_id, tab=t) }}" class="{% if tab == t %}is-active{% endif %}" {% if tab == t %}aria-current="page"{% endif %}>{{ {'overview': 'Overview', 'applicants': 'Applicants', 'matches': 'Find candidates'}[t] }}</a>{% endfor %}
+</nav>
+
+{% if tab == 'overview' %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>The job</h2>{{ job_badge(v) }}</header>
+    <dl class="details">
+      <div><dt>Employer</dt><dd><a href="{{ url_for('employers.detail', public_id=v.employer.public_id) }}" translate="no">{{ v.employer.name }}</a></dd></div>
+      <div><dt>Type</dt><dd>{{ v.type_label }}</dd></div>
+      <div><dt>Trade</dt><dd>{{ v.trade or '—' }}</dd></div>
+      <div><dt>Where</dt><dd>{{ v.place }}</dd></div>
+      <div><dt>Pay</dt><dd>{{ pay(v) }}</dd></div>
+      <div><dt>Closes</dt><dd class="nowrap">{{ v.closing_date|date }}</dd></div>
+      <div><dt>Learners can apply</dt><dd>{{ 'Yes' if v.open_to_learners else 'No, the centre puts people forward' }}</dd></div>
+    </dl>
+    {% if can('vacancies.manage') %}
+    <form method="post" action="{{ url_for('jobs.status', public_id=v.public_id) }}" class="toolbar status-form">
+      {{ status_form.hidden_tag() }}
+      <div class="field grow"><label class="field-label" for="st-status">Status</label>{{ status_form.status() }}</div>
+      <button class="btn btn-primary" type="submit">Update</button>
+    </form>
+    {% if v.status == 'draft' %}<p class="muted small">Open the vacancy to put learners forward{{ ' and let learners apply' if v.open_to_learners else '' }}.</p>{% endif %}
+    {% endif %}
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Required competencies</h2></header>
+    {% if v.competencies %}
+    <ul class="comp-list">{% for c in v.competencies %}<li><div class="comp-head"><span class="comp-code mono">{{ c.code }}</span><strong>{{ c.title }}</strong></div><span class="muted small">Needs level {{ c.required_level }}</span></li>{% endfor %}</ul>
+    {% else %}<p class="empty muted">None. Candidates are matched on trade and region.</p>{% endif %}
+  </section>
+</div>
+{% if v.description or v.requirements %}
+<section class="panel prose">
+  {% if v.description %}<h2>About the job</h2>{{ v.description|richtext }}{% endif %}
+  {% if v.requirements %}<h2>Requirements</h2>{{ v.requirements|richtext }}{% endif %}
+</section>
+{% endif %}
+
+{% elif tab == 'applicants' %}
+<section class="panel">
+  <header class="panel-head"><h2>Applicants</h2>{% if 'matches' in tabs and v.status == 'open' %}<a class="btn btn-primary btn-sm" href="{{ url_for('jobs.detail', public_id=v.public_id, tab='matches') }}">{{ icon('target') }} Find candidates</a>{% endif %}</header>
+  {% if apps %}
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Candidate</th><th class="num">Fit</th><th>How</th><th>Interview</th><th>Stage</th></tr></thead>
+    <tbody>{% for a in apps %}<tr>
+      <td class="wrap"><a href="{{ url_for('jobs.application', public_id=a.public_id) }}" translate="no"><strong>{{ a.learner.full_name }}</strong></a><br><span class="muted small mono">{{ a.learner.learner_no }}</span></td>
+      <td class="nowrap num">{{ fit_pill(a.match_score) }}</td>
+      <td class="nowrap">{{ 'Applied' if a.source == 'applied' else 'Put forward' }}</td>
+      <td class="nowrap">{{ a.interview_at|date('%d %b, %H:%M') if a.interview_at else '—' }}</td>
+      <td class="nowrap">{{ app_badge(a) }}</td>
+    </tr>{% endfor %}</tbody></table></div>
+  {% else %}<p class="empty muted">{% if job_scope.restricted %}No candidates shortlisted for you yet. The centre will shortlist people as they're screened.{% else %}No applicants yet.{% endif %}</p>{% endif %}
+  {% if job_scope.restricted and hidden %}<p class="muted small table-foot">{{ hidden }} more applicant{{ '' if hidden == 1 else 's' }} still being screened by the centre.</p>{% endif %}
+  {% if not job_scope.restricted %}<p class="muted small table-foot">{{ v.employer.name }}'s own team, if they sign in, sees candidates from <strong>Shortlisted</strong> onwards.</p>{% endif %}
+</section>
+
+{% else %}
+<section class="panel">
+  <header class="panel-head"><h2>Best-matched learners</h2></header>
+  <form class="toolbar" method="get" role="search">
+    <input type="hidden" name="tab" value="matches">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Name or learner number"></div>
+    <label class="check inline-check"><input type="checkbox" name="working" value="1" class="auto-submit" {% if include_working %}checked{% endif %}><span>Include people already in work</span></label>
+    <button class="btn btn-ghost" type="submit">{{ icon('search') }} Search</button>
+  </form>
+  {% if v.status != 'open' %}<p class="notice notice-info">Open the vacancy to put learners forward.</p>{% endif %}
+  {% if matches %}
+  <form method="post" action="{{ url_for('jobs.nominate', public_id=v.public_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <ul class="match-list">{% for m in matches %}{% set l = m.learner %}
+      <li>
+        <label class="match-pick"><input type="checkbox" name="learner" value="{{ l.public_id }}" {% if v.status != 'open' %}disabled{% endif %}><span class="visually-hidden">Choose {{ l.full_name }}</span></label>
+        <div class="match-main">
+          <div class="match-name"><a href="{{ url_for('learners.profile', public_id=l.public_id, tab='competencies') }}" translate="no"><strong>{{ l.full_name }}</strong></a>
+            <span class="muted small mono">{{ l.learner_no }}</span>{% if m.certified %}<span class="badge badge-active">{{ icon('award') }} Certified</span>{% endif %}{% if m.working %}<span class="badge">In work</span>{% endif %}</div>
+          <ul class="fit-reasons">{% for label, ok in m.parts %}<li class="{{ 'is-ok' if ok else 'is-gap' }}">{{ icon('circle-check' if ok else 'circle-alert') }}<span>{{ label }}</span></li>{% endfor %}</ul>
+          {% if m.missing %}<p class="muted small">Not yet competent in: {% for c in m.missing %}<span class="mono">{{ c.code }}</span>{{ ', ' if not loop.last }}{% endfor %}</p>{% endif %}
+        </div>
+        <div class="match-score">{{ fit_pill(m.score) }}</div>
+      </li>{% endfor %}</ul>
+    <div class="sticky-actions"><button class="btn btn-primary" type="submit" {% if v.status != 'open' %}disabled{% endif %}>{{ icon('send') }} Put forward the people ticked</button></div>
+  </form>
+  <p class="muted small">Fit counts required competencies (from the latest finalised assessments){% if v.trade %}, training in {{ v.trade }}{% endif %}{% if v.region %} and living in {{ v.region }}{% endif %}. Use it as a guide, not a decision.</p>
+  {% else %}<p class="empty muted">{% if q %}Nobody matches that search.{% else %}No more learners to suggest. Everyone suitable may already be on the applicants list.{% endif %}</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% from "partials/_forms.html" import field %}
+{% block title %}People{% endblock %}
+{% block page_title %}People{% endblock %}
+{% block page_subtitle %}Everyone with access to <span translate="no">{{ g.workspace.name }}</span>{% endblock %}
+{% block content %}
+{% if form %}
+<div class="grid-2">
+  <section class="panel">
+    <header class="panel-head"><h2>Invite someone</h2></header>
+    <form method="post" action="{{ url_for('workspace.invite') }}" class="stack" novalidate>
+      {{ form.hidden_tag() }}
+      <div class="form-grid">
+        {{ field(form.email, autocomplete="off", inputmode="email", placeholder="name@example.com") }}
+        {{ field(form.full_name, autocomplete="off") }}
+      </div>
+      <fieldset class="role-picker">
+        <legend class="field-label">Roles</legend>
+        {{ form.roles(class_="check-grid") }}
+      </fieldset>
+      {{ field(form.message, placeholder="Optional note included in the email") }}
+      <button class="btn btn-primary" type="submit">{{ icon('mail') }} Send invitation</button>
+    </form>
+  </section>
+  <section class="panel">
+    <header class="panel-head"><h2>Plan limits</h2><a class="link-arrow" href="{{ url_for('workspace.subscription') }}">Plan {{ icon('chevron-right') }}</a></header>
+    <ul class="usage-list">
+      {% for label, row in [("Staff users", staff), ("Learners", learners)] %}
+      <li><div class="usage-top"><span>{{ label }}</span><span class="muted nowrap">{{ row.used }} of {{ row.limit|limit }}</span></div>
+        {% if row.limit %}<progress max="{{ row.limit }}" value="{{ row.used }}"></progress>{% endif %}</li>
+      {% endfor %}
+    </ul>
+    <p class="muted small">Pending invitations count towards these limits. Staff are administrators, training managers, trainers, assessors, M&amp;E and finance officers.</p>
+    {% if invitations %}
+    <h3 class="sub-head">Pending invitations</h3>
+    <ul class="invite-list">
+      {% for inv in invitations %}
+      <li>
+        <div class="invite-meta"><strong translate="no">{{ inv.email }}</strong>
+          <span class="muted small">{{ inv.roles|map('role_label')|join(', ') }} · expires {{ inv.expires_at|date('%d %b') }}</span></div>
+        <div class="invite-actions">
+          <form method="post" action="{{ url_for('workspace.resend_invitation', public_id=inv.public_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm" type="submit">Resend</button></form>
+          <form method="post" action="{{ url_for('workspace.revoke_invitation', public_id=inv.public_id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-ghost btn-sm" type="submit">Cancel</button></form>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+</div>
+{% endif %}
+
+<section class="panel">
+  <form class="toolbar" method="get" role="search">
+    <div class="field grow"><label class="visually-hidden" for="q">Search</label><input id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name or email"></div>
+    <div class="field"><label class="visually-hidden" for="status">Status</label>
+      <select id="status" name="status"><option value="">Everyone</option><option value="active" {% if status == 'active' %}selected{% endif %}>Active</option><option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option></select></div>
+    <button class="btn btn-primary" type="submit">{{ icon('search') }} Search</button>
+  </form>
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Status</th><th>Since</th></tr></thead>
+      <tbody>{% for r in rows %}
+        <tr>
+          <td class="wrap"><a href="{{ url_for('workspace.person', public_id=r.user.public_id) }}" translate="no">{{ r.user.full_name }}</a>{% if r.owner %} <span class="badge badge-trialing">Owner</span>{% endif %}</td>
+          <td class="nowrap" translate="no">{{ r.user.email }}</td>
+          <td class="wrap">{{ r.roles|join(', ') }}</td>
+          <td class="nowrap">{% if r.active %}<span class="badge badge-active">Active</span>{% else %}<span class="badge">Inactive</span>{% endif %}</td>
+          <td class="nowrap">{{ r.since|date }}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  <p class="muted small table-foot">{{ rows|length }} {{ 'person' if rows|length == 1 else 'people' }}</p>
+  {% else %}<p class="empty muted">{% if q or status %}Nobody matches your search.{% else %}No people yet.{% endif %}</p>{% endif %}
+</section>
+{% endblock %}

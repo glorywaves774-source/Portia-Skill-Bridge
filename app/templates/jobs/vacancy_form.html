@@ -1,0 +1,28 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ 'Edit vacancy' if v else 'New vacancy' }}{% endblock %}
+{% block page_title %}{{ 'Edit ' ~ v.title if v else 'Post a vacancy' }}{% endblock %}
+{% block page_subtitle %}{% if v %}<span class="mono">{{ v.code }}</span>{% else %}Saved as a draft until you open it{% endif %}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('jobs.detail', public_id=v.public_id) if v else url_for('jobs.index') }}">{{ icon('arrow-left') }} Back</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.employer, cls="span-2") }}
+    {{ field(form.title, cls="span-2", placeholder="e.g. Junior machinist") }}
+    {{ field(form.trade, placeholder="e.g. Fashion design", hint="Used to match learners trained in this trade.") }}{{ field(form.employment_type) }}
+    {{ field(form.positions, inputmode="numeric") }}{{ field(form.closing_date) }}
+    {{ field(form.region, hint="Learners living in this region score higher.") }}{{ field(form.location, placeholder="e.g. Kaneshie, Accra") }}
+    {{ field(form.salary_min, inputmode="decimal") }}{{ field(form.salary_max, inputmode="decimal") }}
+    {{ field(form.description, cls="span-2", hint="Simple formatting: ## heading, - list, **bold**.") }}
+    {{ field(form.requirements, cls="span-2") }}
+    <fieldset class="role-picker span-2"><legend class="field-label">Required competencies</legend>
+      {% if form.competencies.choices %}{{ form.competencies(class_="check-grid") }}<span class="field-hint">Learners assessed competent in these units rank higher. Leave blank if none apply.</span>
+      {% else %}<p class="muted small">No active competency frameworks yet. Learners will be matched on trade and region.</p>{% endif %}
+    </fieldset>
+    <div class="span-2">{{ checkbox(form.open_to_learners) }}</div>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} {{ 'Save changes' if v else 'Save draft' }}</button></div>
+  </form>
+</section>
+{% endblock %}

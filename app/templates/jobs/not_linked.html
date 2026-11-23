@@ -1,0 +1,11 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Jobs{% endblock %}
+{% block page_title %}Jobs and candidates{% endblock %}
+{% block content %}
+<section class="panel empty-state center">
+  <span class="kpi-icon" aria-hidden="true">{{ icon('building-2') }}</span>
+  <h2>Your account isn't linked to an employer yet</h2>
+  <p class="muted">Ask an administrator at <span translate="no">{{ g.workspace.name }}</span> to link your account to your company on its employer page. You'll then see your vacancies, shortlisted candidates and placements here.</p>
+</section>
+{% endblock %}

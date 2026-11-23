@@ -1,0 +1,25 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_forms.html" import field, checkbox %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Edit {{ plan.name }}{% endblock %}
+{% block page_title %}Edit plan: {{ plan.name }}{% endblock %}
+{% block page_subtitle %}<span class="mono">{{ plan.code }}</span> · for {{ plan.audience }}s{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('admin.plans') }}">{{ icon('arrow-left') }} All plans</a></p>
+<section class="panel">
+  <form method="post" class="form-grid" novalidate>
+    {{ form.hidden_tag() }}
+    {{ field(form.name) }}{{ field(form.tagline) }}
+    {% if plan.is_custom_pricing %}<p class="span-2 muted small">Custom-priced plan: prices are agreed per customer. Leave them at 0.</p>{% endif %}
+    {{ field(form.monthly_price, inputmode="decimal") }}{{ field(form.annual_price, inputmode="decimal", hint="Usually 10 × monthly (two months free)") }}
+    {{ field(form.trial_days, inputmode="numeric") }}{{ field(form.storage_mb, inputmode="numeric") }}
+    {{ field(form.max_learners, inputmode="numeric") }}{{ field(form.max_staff, inputmode="numeric") }}
+    {{ field(form.max_courses, inputmode="numeric") }}{{ field(form.max_programmes, inputmode="numeric") }}
+    {{ field(form.max_vacancies, inputmode="numeric") }}<div></div>
+    {{ field(form.features, cls="span-2") }}
+    <div class="span-2">{{ checkbox(form.is_public) }}{{ checkbox(form.is_active) }}{{ checkbox(form.is_featured) }}</div>
+    <p class="span-2 muted small">Price changes apply to new subscriptions and at each subscriber's next renewal. Lowering a limit doesn't remove anyone; it stops new additions above the limit.</p>
+    <div class="span-2 form-actions"><button class="btn btn-primary" type="submit">{{ icon('check') }} Save plan</button></div>
+  </form>
+</section>
+{% endblock %}

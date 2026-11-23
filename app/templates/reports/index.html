@@ -1,0 +1,138 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Reports{% endblock %}
+{% block page_title %}Reports{% endblock %}
+{% block page_subtitle %}Monitoring and evaluation · {{ f.start|date('%d %b %Y') }} to {{ f.end|date('%d %b %Y') }}{% endblock %}
+{% block scripts %}{{ super() }}<script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}" defer></script><script src="{{ url_for('static', filename='js/reports.js') }}" defer></script>{% endblock %}
+{% block page_tools %}
+{% if can_export %}<a class="btn btn-ghost btn-sm" href="{{ url_for('reports.export_xlsx', **args) }}">{{ icon('file-spreadsheet') }} Excel</a><a class="btn btn-primary btn-sm" href="{{ url_for('reports.export_pdf', **args) }}">{{ icon('download') }} PDF report</a>{% endif %}
+{% endblock %}
+{% macro pct(v) %}{{ '—' if v is none else (v|round(1) ~ '%')|replace('.0%', '%') }}{% endmacro %}
+{% block content %}
+{% for n in f.notes %}<div class="notice notice-warn">{{ icon('circle-alert') }}<span>{{ n }}</span></div>{% endfor %}
+
+<section class="panel report-filters" aria-label="Report filters">
+  <div class="chip-row" role="list" aria-label="Quick periods">{% for label, s, e in presets %}
+    <a role="listitem" class="chip{{ ' chip-accent' if s == f.start and e == f.end else '' }}" href="{{ url_for('reports.index', **dict(args, start=s.isoformat(), end=e.isoformat())) }}">{{ label }}</a>{% endfor %}
+  </div>
+  <form method="get" class="report-form">
+    <div class="field"><label class="field-label" for="start">From</label><input type="date" id="start" name="start" value="{{ f.start.isoformat() }}" required></div>
+    <div class="field"><label class="field-label" for="end">To</label><input type="date" id="end" name="end" value="{{ f.end.isoformat() }}" required></div>
+    <div class="field"><label class="field-label" for="programme">Programme</label><select id="programme" name="programme"><option value="">All programmes</option>{% for p in programmes %}<option value="{{ p.public_id }}" {% if f.programme and f.programme.id == p.id %}selected{% endif %} translate="no">{{ p.code }} · {{ p.name }}</option>{% endfor %}</select></div>
+    <details class="more-filters"{% if f.gender or f.region or f.disability or f.category %} open{% endif %}><summary>{{ icon('filter') }} More filters{% if f.gender or f.region or f.disability or f.category %} <span class="badge">On</span>{% endif %}</summary>
+    <div class="more-filters-grid">
+      <div class="field"><label class="field-label" for="gender">Gender</label><select id="gender" name="gender"><option value="">Everyone</option>{% for k, label in genders.items() %}<option value="{{ k }}" {% if f.gender == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+      <div class="field"><label class="field-label" for="region">Region</label><select id="region" name="region"><option value="">All regions</option>{% for r_ in regions %}<option {% if f.region == r_ %}selected{% endif %}>{{ r_ }}</option>{% endfor %}</select></div>
+      <div class="field"><label class="field-label" for="disability">Disability</label><select id="disability" name="disability"><option value="">Everyone</option><option value="yes" {% if f.disability == 'yes' %}selected{% endif %}>With a disability</option><option value="no" {% if f.disability == 'no' %}selected{% endif %}>Without a disability</option></select></div>
+      <div class="field"><label class="field-label" for="category">Group</label><select id="category" name="category"><option value="">Everyone</option>{% for k, label in categories.items() %}<option value="{{ k }}" {% if f.category == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></div>
+    </div></details>
+    <div class="report-form-actions"><button class="btn btn-primary" type="submit">{{ icon('filter') }} Show</button>{% if f.narrowed %}<a class="btn btn-ghost" href="{{ url_for('reports.index', start=f.start.isoformat(), end=f.end.isoformat()) }}">Clear</a>{% endif %}</div>
+  </form>
+  <p class="muted small">{{ r.learners_counted }} learner record{{ '' if r.learners_counted == 1 else 's' }} match these filters. Results count each learner once.</p>
+</section>
+
+<section class="panel">
+  <header class="panel-head"><h2>Results</h2></header>
+  <div class="stat-row result-row">{% for k, label, d in indicators %}
+    <div title="{{ d }}"><p class="stat-value">{{ r.counts[k] }}</p><p class="stat-label">{{ label }}</p></div>{% endfor %}
+  </div>
+</section>
+
+<section class="report-grid">
+  <article class="panel">
+    <header class="panel-head"><h2>Rates</h2></header>
+    <ul class="rate-list">{% for k, label, d in rate_defs %}{% set part, whole, unit = r.rate_basis[k] %}
+      <li><div class="usage-top"><span><strong>{{ label }}</strong></span><span class="nowrap"><strong>{{ pct(r.rates[k]) }}</strong></span></div>
+        {% if r.rates[k] is not none %}<progress max="100" value="{{ r.rates[k] }}" aria-label="{{ label }}"></progress>{% endif %}
+        <p class="muted small">{% if whole %}{{ part }} of {{ whole }} {{ unit[:-1] if whole == 1 else unit }}{% else %}No {{ unit }} in this period{% endif %} · {{ d }}.</p></li>{% endfor %}
+    </ul>
+  </article>
+  <article class="panel">
+    <header class="panel-head"><h2>Results chain</h2></header>
+    <p class="muted small chart-sub">Learners reaching each step in the period</p>
+    <div class="chart-box chart-tall"><canvas id="chart-chain" role="img" aria-label="Bar chart of learners at each step: {% for k, label, d in indicators if k != 'assessed' %}{{ label }} {{ r.counts[k] }}{{ ', ' if not loop.last }}{% endfor %}"></canvas></div>
+  </article>
+</section>
+
+<section class="panel">
+  <header class="panel-head"><h2>Month by month</h2></header>
+  <div class="chart-box"><canvas id="chart-trend" role="img" aria-label="Line chart of enrolments, completions, certificates and placements each month"></canvas></div>
+  <details class="table-view"><summary>Show as a table</summary>
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Month</th><th class="num">Enrolled</th><th class="num">Completed</th><th class="num">Certificates</th><th class="num">Placed</th></tr></thead>
+      <tbody>{% for m in r.trend.months %}{% set i = loop.index0 %}<tr><td class="nowrap">{{ m.strftime('%b %Y') }}</td>{% for k in ('enrolled', 'completed', 'certified', 'placed') %}<td class="num">{{ r.trend.series[k][i] }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+    </table></div>
+  </details>
+</section>
+
+<section class="panel">
+  <header class="panel-head"><h2>By gender, age and disability</h2></header>
+  <div class="chart-box chart-gender"><canvas id="chart-gender" role="img" aria-label="Grouped bar chart comparing female and male learners at each step"></canvas></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Result</th>{% for g, label in groups %}<th class="num">{{ label }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for d in r.disaggregation %}<tr><td>{{ d.label }}</td>{% for g, _ in groups %}<td class="num">{{ d['values'][g] }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="muted small">Youth means aged 15 to 35 at the end of the period. A learner can be in more than one group.</p>
+</section>
+
+<section class="report-grid">
+  <article class="panel">
+    <header class="panel-head"><h2>By age</h2></header>
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Age band</th><th class="num">Registered</th><th class="num">Completed</th><th class="num">Placed</th></tr></thead>
+      <tbody>{% for b in r.by_band %}<tr><td class="nowrap">{{ b.label }}</td><td class="num">{{ b.registered }}</td><td class="num">{{ b.completed }}</td><td class="num">{{ b.placed }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </article>
+  <article class="panel">
+    <header class="panel-head"><h2>By region</h2></header>
+    {% if r.by_region %}<div class="table-wrap"><table class="table">
+      <thead><tr><th>Region</th><th class="num">Registered</th><th class="num">Completed</th><th class="num">Placed</th></tr></thead>
+      <tbody>{% for b in r.by_region %}<tr><td>{{ b.label }}</td><td class="num">{{ b.registered }}</td><td class="num">{{ b.completed }}</td><td class="num">{{ b.placed }}</td></tr>{% endfor %}</tbody>
+    </table></div>{% else %}<p class="muted">No learners in this period.</p>{% endif %}
+  </article>
+</section>
+
+<section class="panel">
+  <header class="panel-head"><h2>By programme</h2></header>
+  {% if r.programmes %}<div class="table-wrap"><table class="table">
+    <thead><tr><th>Programme</th><th class="num">Enrolled</th><th class="num">Completed</th><th class="num">Completion</th><th class="num">Attendance</th><th class="num">Competent</th><th class="num">Placed</th></tr></thead>
+    <tbody>{% for p in r.programmes %}<tr>
+      <td class="wrap"><a href="{{ url_for('programmes.detail', public_id=p.programme.public_id) }}" translate="no">{{ p.programme.name }}</a><br><span class="muted small mono">{{ p.programme.code }}</span></td>
+      <td class="num">{{ p.enrolled }}</td><td class="num">{{ p.completed }}</td><td class="num">{{ pct(p.completion_rate) }}</td><td class="num">{{ pct(p.attendance_rate) }}</td><td class="num">{{ p.competent }}</td><td class="num">{{ p.placed }}</td></tr>{% endfor %}</tbody>
+  </table></div>{% else %}<p class="muted">No training activity in this period.</p>{% endif %}
+</section>
+
+<section class="report-grid">
+  <article class="panel">
+    <header class="panel-head"><h2>Type of work</h2></header>
+    <p class="muted small chart-sub">Placements started in the period</p>
+    {% if r.placements_by_type %}<div class="chart-box chart-short"><canvas id="chart-placements" role="img" aria-label="Bar chart of placements by type: {% for g, n in r.placements_by_type %}{{ g }} {{ n }}{{ ', ' if not loop.last }}{% endfor %}"></canvas></div>
+    <details class="table-view"><summary>Show as a table</summary><div class="table-wrap"><table class="table"><tbody>{% for g, n in r.placements_by_type %}<tr><td>{{ g }}</td><td class="num">{{ n }}</td></tr>{% endfor %}</tbody></table></div></details>
+    {% else %}<p class="muted">No placements started in this period.</p>{% endif %}
+    <dl class="details compact-details">
+      <div><dt>Average monthly pay at start</dt><dd>{{ r.average_pay_minor|money }}</dd></div>
+      <div><dt>Average monthly pay at follow-up</dt><dd>{{ r.average_followup_pay_minor|money }}</dd></div>
+      {% if r.certificates_by_kind %}<div><dt>Certificates issued</dt><dd>{% for k, n in r.certificates_by_kind %}{{ n }} {{ k|lower }}{{ ', ' if not loop.last }}{% endfor %}</dd></div>{% endif %}
+    </dl>
+  </article>
+  <article class="panel">
+    <header class="panel-head"><h2>Still in work at follow-up</h2></header>
+    <p class="muted small chart-sub">Share of follow-up checks recorded in the period</p>
+    {% if r.retention|selectattr('done')|list %}<div class="chart-box chart-short"><canvas id="chart-retention" role="img" aria-label="Column chart of the share still working at {% for x in r.retention %}{{ x.months }} months {{ pct(x.rate) }}{{ ', ' if not loop.last }}{% endfor %}"></canvas></div>{% else %}<p class="muted">No follow-up checks recorded in this period.</p>{% endif %}
+    <div class="table-wrap"><table class="table">
+      <thead><tr><th>Check</th><th class="num">Recorded</th><th class="num">Still working</th><th class="num">Share</th></tr></thead>
+      <tbody>{% for x in r.retention %}<tr><td class="nowrap">{{ x.months }} months</td><td class="num">{{ x.done }}</td><td class="num">{{ x.working }}</td><td class="num">{{ pct(x.rate) }}</td></tr>{% endfor %}</tbody>
+    </table></div>
+  </article>
+</section>
+
+<section class="panel">
+  <details class="definitions"><summary><strong>How each figure is worked out</strong></summary>
+    <dl class="details">{% for k, label, d in indicators %}<div><dt>{{ label }}</dt><dd>{{ d }}.</dd></div>{% endfor %}
+      {% for k, label, d in rate_defs %}<div><dt>{{ label }}</dt><dd>{{ d }}.</dd></div>{% endfor %}
+      <div><dt>Learners counted</dt><dd>Archived learner records are left out. Filters narrow which learners are counted; a programme filter also limits training, attendance and assessment figures to that programme.</dd></div>
+    </dl>
+  </details>
+</section>
+<script type="application/json" id="report-data">{{ charts|tojson }}</script>
+{% endblock %}

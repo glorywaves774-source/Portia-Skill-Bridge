@@ -1,0 +1,52 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}{{ plan.name }}{% endblock %}
+{% block page_title %}<span translate="no">{{ plan.name }}</span>{% endblock %}
+{% block page_subtitle %}{{ 'Pay for your plan' if q.payable else 'Change your plan' }}{% endblock %}
+{% block content %}
+<p><a class="link-arrow back-link" href="{{ url_for('workspace.subscription') }}">{{ icon('arrow-left') }} Subscription</a></p>
+{% if test_mode and q.payable %}<div class="notice notice-info">{{ icon('info') }}<span><strong>Practice payments.</strong> No real money moves in test mode.</span></div>{% endif %}
+<div class="checkout-grid">
+<section class="panel">
+  {% if not plan.is_free and not plan.is_custom_pricing %}
+  <nav class="segmented" aria-label="Billing">
+    <a href="{{ url_for('billing.checkout', plan=plan.code, cycle='monthly') }}" class="{{ 'is-active' if cycle == 'monthly' }}" {% if cycle == 'monthly' %}aria-current="page"{% endif %}>Monthly</a>
+    <a href="{{ url_for('billing.checkout', plan=plan.code, cycle='annual') }}" class="{{ 'is-active' if cycle == 'annual' }}" {% if cycle == 'annual' %}aria-current="page"{% endif %}>Yearly{% if plan.annual_saving_minor %} · save {{ plan.annual_saving_minor|money(plan.currency) }}{% endif %}</a>
+  </nav>
+  {% endif %}
+  <p class="checkout-message">{{ q.message }}</p>
+  {% if q.kind == 'contact' %}
+    <a class="btn btn-primary" href="{{ url_for('public.pricing') }}">Talk to sales</a>
+  {% else %}
+  <dl class="details checkout-lines">
+    <div><dt>{{ plan.name }}, one {{ 'year' if cycle == 'annual' else 'month' }}</dt><dd class="nowrap">{{ 'Free' if plan.is_free else q.price_minor|money(plan.currency) }}</dd></div>
+    {% if q.credit_minor %}<div><dt>Unused time on {{ sub.plan.name }}</dt><dd class="nowrap">− {{ q.credit_minor|money(plan.currency) }}</dd></div>{% endif %}
+    <div class="total"><dt>{{ 'To pay now' }}</dt><dd class="nowrap">{{ q.amount_minor|money(plan.currency) }}</dd></div>
+  </dl>
+  {% if q.over_limits %}<div class="notice notice-warn">{{ icon('circle-alert') }}<div><strong>Too much for this plan.</strong><ul class="tight-list">{% for o in q.over_limits %}<li>{{ o }}</li>{% endfor %}</ul><span>Remove some first, or choose a bigger plan.</span></div></div>{% endif %}
+  {% if q.payable %}
+    {% if online %}
+    <form method="post" action="{{ url_for('billing.start') }}" class="stack checkout-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="plan" value="{{ plan.code }}"><input type="hidden" name="cycle" value="{{ cycle }}">
+      <div class="field"><label class="field-label" for="billing_email">Email for receipts</label>
+        <input type="email" id="billing_email" name="billing_email" value="{{ email }}" required maxlength="255" autocomplete="email" inputmode="email">
+        <p class="muted small">Paystack sends the receipt here. We share only this email and the amount with Paystack.</p></div>
+      <button class="btn btn-primary btn-lg" type="submit">{{ icon('lock') }} Pay {{ q.amount_minor|money(plan.currency) }} with Paystack</button>
+      <p class="muted small">You'll go to Paystack's secure page to pay with Mobile Money (MTN, Telecel, AirtelTigo) or a card. Cards can be saved there for automatic renewals.</p>
+    </form>
+    {% else %}<p class="muted">Online payment isn't switched on for this site yet. Please contact {{ app_developer }} to pay.</p>{% endif %}
+  {% elif q.kind in ('downgrade', 'free') %}
+    <form method="post" action="{{ url_for('billing.change') }}" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="plan" value="{{ plan.code }}"><input type="hidden" name="cycle" value="{{ cycle }}">
+      <button class="btn btn-primary" type="submit" {% if q.over_limits %}disabled{% endif %}>{{ 'Switch to ' ~ plan.name if q.kind == 'free' and q.starts == 'now' else 'Confirm the change' }}</button>
+    </form>
+  {% endif %}
+  {% endif %}
+</section>
+<aside class="panel">
+  <header class="panel-head"><h2>What you get</h2></header>
+  <ul class="check-list">{% for f in plan.features or [] %}<li>{{ icon('circle-check') }}<span>{{ f }}</span></li>{% endfor %}</ul>
+  {% if method and q.payable %}<p class="muted small">Your saved {{ method.label }} pays renewals automatically. You can pay with a different method on Paystack.</p>{% endif %}
+</aside>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "layouts/shell.html" %}
+{% from "partials/_macros.html" import icon %}
+{% block title %}Result: {{ lesson.title }}{% endblock %}
+{% block page_title %}{{ lesson.title }}: your result{% endblock %}
+{% block page_subtitle %}{{ a.submitted_at|date('%d %b %Y %H:%M') }}{% endblock %}
+{% block content %}
+<section class="panel result-hero {{ 'is-pass' if a.passed else 'is-fail' }}">
+  <p class="result-score">{{ a.percent }}%</p>
+  <p><strong>{% if a.passed %}Passed — well done!{% elif a.late %}Time ran out before you submitted, so this attempt doesn't count.{% else %}Not passed yet. The pass mark is {{ lesson.pass_mark }}%.{% endif %}</strong></p>
+  <p class="muted">{{ a.score }} of {{ a.max_score }} point{{ '' if a.max_score == 1 else 's' }}</p>
+  <div class="result-actions">
+    <a class="btn btn-ghost" href="{{ url_for('learn.lesson', public_id=c.public_id, lesson_id=lesson.public_id) }}">Back to the lesson</a>
+    <a class="btn btn-primary" href="{{ url_for('learn.course', public_id=c.public_id) }}">Course outline</a>
+  </div>
+</section>
+{% if lesson.show_answers %}
+{% for q in lesson.questions %}{% set chosen = a.answers.get(q.id|string, []) %}{% set right = chosen and (chosen|sort) == (q.correct_ids|list|sort) %}
+<section class="panel question {{ 'q-right' if right else 'q-wrong' }}">
+  <p><span class="q-num">{{ loop.index }}</span> <strong>{{ q.prompt }}</strong> {% if right %}<span class="badge badge-active">Correct</span>{% else %}<span class="badge badge-suspended">Incorrect</span>{% endif %}</p>
+  <ul class="option-list">{% for o in q.options %}<li class="{{ 'is-correct' if o.is_correct else '' }} {{ 'is-chosen' if o.id in chosen else '' }}">{% if o.is_correct %}{{ icon('circle-check') }}<span class="visually-hidden">Correct answer: </span>{% endif %}{{ o.text }}{% if o.id in chosen %} <span class="muted small">(your answer)</span>{% endif %}</li>{% endfor %}</ul>
+  {% if q.explanation %}<p class="muted small">{{ q.explanation }}</p>{% endif %}
+</section>
+{% endfor %}
+{% endif %}
+{% endblock %}
